@@ -73,7 +73,11 @@ create policy audit_logs_admin_all on audit_logs
     )
   );
 
--- 8. RLS Policies for Member Portal (Self Access)
+-- 8. RLS Policies for Member Portal (Self Access & Lookup)
+drop policy if exists members_read_all on members;
+create policy members_read_all on members
+  for select using (true);
+
 drop policy if exists members_self_read on members;
 create policy members_self_read on members
   for select using (

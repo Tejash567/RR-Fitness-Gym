@@ -370,6 +370,65 @@ export function MembersPage() {
   const [memberAttendance, setMemberAttendance] = useState<Row[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Portal Account Modal state
+  const [portalModal, setPortalModal] = useState<{ type: 'create' | 'reset'; member: Row } | null>(null);
+  const [portalPassword, setPortalPassword] = useState('');
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalMsg, setPortalMsg] = useState<string | null>(null);
+  const [createdCredentials, setCreatedCredentials] = useState<{ memberName: string; memberCode: string; password: string } | null>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+
+  const handlePortalSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!portalModal) return;
+    setPortalLoading(true);
+    setPortalMsg(null);
+
+    try {
+      const client = createBrowserClient();
+      const { data: sessionRes } = await client?.auth.getSession() ?? {};
+      const token = sessionRes?.session?.access_token;
+
+      const res = await fetch('/api/admin/portal-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: portalModal.type === 'create' ? 'create' : 'reset_password',
+          memberId: portalModal.member.id,
+          password: portalPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPortalMsg(data.error || 'Failed to process portal action.');
+        setPortalLoading(false);
+        return;
+      }
+
+      setCreatedCredentials({
+        memberName: portalModal.member.full_name,
+        memberCode: data.memberCode || portalModal.member.member_code || 'RR-F-0001',
+        password: portalPassword,
+      });
+
+      setMessage(data.message || 'Portal account credentials generated successfully.');
+      setPortalModal(null);
+      setPortalPassword('');
+      await loadData();
+      if (selectedMember && selectedMember.id === portalModal.member.id) {
+        setSelectedMember({ ...selectedMember, user_id: data.userId || selectedMember.user_id });
+      }
+    } catch (err: any) {
+      setPortalMsg(err.message || 'Error processing portal action.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const [form, setForm] = useState({
     id: '',
     member_code: '',
@@ -385,7 +444,6 @@ export function MembersPage() {
     expiry_date: '',
     status: 'active',
     notes: '',
-    user_id: '',
   });
 
   const loadData = async () => {
@@ -453,7 +511,6 @@ export function MembersPage() {
       expiry_date: form.expiry_date || null,
       status: form.status,
       notes: form.notes || null,
-      user_id: form.user_id || null,
     };
 
     if (form.id) {
@@ -468,7 +525,7 @@ export function MembersPage() {
 
     await loadData();
     setForm({
-      id: '', member_code: '', full_name: '', phone: '', email: '', gender: '', dob: '', address: '', emergency_contact: '', membership_plan_id: '', start_date: '', expiry_date: '', status: 'active', notes: '', user_id: ''
+      id: '', member_code: '', full_name: '', phone: '', email: '', gender: '', dob: '', address: '', emergency_contact: '', membership_plan_id: '', start_date: '', expiry_date: '', status: 'active', notes: ''
     });
     setMessage('Member record saved successfully.');
   };
@@ -489,7 +546,6 @@ export function MembersPage() {
       expiry_date: member.expiry_date ?? '',
       status: member.status ?? 'active',
       notes: member.notes ?? '',
-      user_id: member.user_id ?? '',
     });
     setSelectedMember(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -633,11 +689,6 @@ export function MembersPage() {
             </div>
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Link Supabase Auth User ID (for Member Portal)</label>
-              <input value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} placeholder="UUID from auth.users (optional)" style={inputStyle} />
-            </div>
-
-            <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Notes / Remarks</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes about health goals, injuries, etc." rows={2} style={inputStyle} />
             </div>
@@ -647,7 +698,7 @@ export function MembersPage() {
                 {form.id ? 'Update Member Profile' : 'Save Member'}
               </button>
               {form.id && (
-                <button type="button" onClick={() => setForm({ id: '', member_code: '', full_name: '', phone: '', email: '', gender: '', dob: '', address: '', emergency_contact: '', membership_plan_id: '', start_date: '', expiry_date: '', status: 'active', notes: '', user_id: '' })} style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid #d4d4d8', background: '#f4f4f5', cursor: 'pointer' }}>
+                <button type="button" onClick={() => setForm({ id: '', member_code: '', full_name: '', phone: '', email: '', gender: '', dob: '', address: '', emergency_contact: '', membership_plan_id: '', start_date: '', expiry_date: '', status: 'active', notes: '' })} style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid #d4d4d8', background: '#f4f4f5', cursor: 'pointer' }}>
                   Cancel
                 </button>
               )}
@@ -756,12 +807,114 @@ export function MembersPage() {
             </div>
 
             {/* Modal Quick Actions */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 16, borderTop: '1px solid #e4e4e7' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 24, paddingTop: 16, borderTop: '1px solid #e4e4e7' }}>
               <button type="button" onClick={() => handleEdit(selectedMember)} style={{ padding: '10px 16px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
                 Edit Details
               </button>
               <button type="button" onClick={() => handleToggleDeactivate(selectedMember)} style={{ padding: '10px 16px', background: selectedMember.status === 'inactive' ? '#10b981' : '#ef4444', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
                 {selectedMember.status === 'inactive' ? 'Reactivate Member' : 'Deactivate Member'}
+              </button>
+              {!selectedMember.user_id ? (
+                <button type="button" onClick={() => { setPortalPassword(''); setPortalMsg(null); setPortalModal({ type: 'create', member: selectedMember }); }} style={{ padding: '10px 16px', background: '#2563eb', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
+                  Create Portal Credentials
+                </button>
+              ) : (
+                <button type="button" onClick={() => { setPortalPassword(''); setPortalMsg(null); setPortalModal({ type: 'reset', member: selectedMember }); }} style={{ padding: '10px 16px', background: '#4b5563', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
+                  Reset Portal Password
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Portal Account Modal Overlay */}
+      {portalModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 120, padding: 20 }}>
+          <div style={{ maxWidth: 440, width: '100%', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: 16, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800, color: '#09090b' }}>
+              {portalModal.type === 'create' ? 'Create Member Credentials' : 'Reset Member Portal Password'}
+            </h3>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#71717a' }}>
+              Member: <strong>{portalModal.member.full_name}</strong> ({portalModal.member.member_code || 'ID'})
+            </p>
+
+            {portalMsg && (
+              <div style={{ padding: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13, marginBottom: 14 }}>
+                {portalMsg}
+              </div>
+            )}
+
+            <form onSubmit={handlePortalSubmit} style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>
+                  {portalModal.type === 'create' ? 'Portal Password *' : 'New Password *'}
+                </label>
+                <input type="password" required value={portalPassword} onChange={(e) => setPortalPassword(e.target.value)} placeholder="Enter password (min 6 characters)" style={inputStyle} />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                <button type="submit" disabled={portalLoading} style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 800, cursor: portalLoading ? 'wait' : 'pointer' }}>
+                  {portalLoading ? 'Processing…' : portalModal.type === 'create' ? 'Generate Credentials' : 'Save New Password'}
+                </button>
+                <button type="button" onClick={() => setPortalModal(null)} style={{ padding: '12px 14px', background: '#f4f4f5', border: '1px solid #d4d4d8', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* One-Time Credential Display Card Overlay */}
+      {createdCredentials && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 130, padding: 20 }}>
+          <div style={{ maxWidth: 450, width: '100%', background: '#121215', border: '2px solid #dc2626', borderRadius: 16, padding: 28, color: '#ffffff', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: '#dc2626', letterSpacing: '0.15em', textTransform: 'uppercase' }}>RR FITNESS MEMBER PORTAL</div>
+              <h3 style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 900, color: '#ffffff' }}>Member Credentials Generated</h3>
+              <p style={{ fontSize: 13, color: '#a1a1aa', margin: '4px 0 0' }}>Provide these login credentials to <strong>{createdCredentials.memberName}</strong></p>
+            </div>
+
+            <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 12, padding: 18, display: 'grid', gap: 14, marginBottom: 20 }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Member ID</span>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.05em', marginTop: 2 }}>{createdCredentials.memberCode}</div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Portal Password</span>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#10b981', letterSpacing: '0.05em', marginTop: 2 }}>{createdCredentials.password}</div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Portal Login URL</span>
+                <div style={{ fontSize: 13, color: '#fca5a5', fontWeight: 700, marginTop: 2 }}>
+                  {typeof window !== 'undefined' ? `${window.location.origin}/member/login` : '/member/login'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  const url = typeof window !== 'undefined' ? `${window.location.origin}/member/login` : '/member/login';
+                  const text = `RR FITNESS MEMBER PORTAL\nMember ID: ${createdCredentials.memberCode}\nPassword: ${createdCredentials.password}\nLogin: ${url}`;
+                  await navigator.clipboard.writeText(text);
+                  setCopiedCreds(true);
+                  setTimeout(() => setCopiedCreds(false), 2000);
+                }}
+                style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 800, cursor: 'pointer' }}
+              >
+                {copiedCreds ? '✓ Credentials Copied!' : 'Copy Credentials'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatedCredentials(null)}
+                style={{ padding: '12px 18px', background: '#27272a', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Close
               </button>
             </div>
           </div>
@@ -1761,43 +1914,202 @@ export function AnnouncementsPage() {
 }
 
 export function ContentPage() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [selectedKey, setSelectedKey] = useState('hero_heading');
-  const [value, setValue] = useState('');
-  const defaults = [
-    ['hero_heading', 'RR FITNESS'],
-    ['hero_description', 'Train Hard. Stay Strong. A modern fitness destination in Jhabrera.'],
-    ['about_heading', 'Train Hard. Stay Strong.'],
-    ['about_description', 'RR Fitness is a modern gym in Jhabrera, Uttarakhand offering quality fitness equipment and dumbbell area for your workout.'],
-    ['contact_heading', 'Visit RR Fitness.'],
-    ['contact_description', 'Find us at 5, Roorkee, Jhabrera, Uttarakhand 247665 (Near Ambika Battery). Open daily until 10 PM.'],
-  ];
+  const [settings, setSettings] = useState<Record<string, string>>({
+    address: '5, Roorkee, Jhabrera, Uttarakhand 247665',
+    location_ref: 'Ambika Battery',
+    hours: 'Open daily until 10 PM',
+    phone_display: '063967 59176',
+    whatsapp_number: '916396759176',
+  });
+  const [content, setContent] = useState<Record<string, string>>({
+    hero_heading: 'RR FITNESS',
+    hero_description: 'Train Hard. Stay Strong. A modern fitness destination in Jhabrera.',
+    about_heading: 'Train Hard. Stay Strong.',
+    about_description: 'RR Fitness is a modern gym in Jhabrera, Uttarakhand offering quality fitness equipment and dumbbell area for your workout.',
+    contact_heading: 'Visit RR Fitness.',
+    contact_description: 'We are located in Jhabrera, Uttarakhand near Ambika Battery.',
+  });
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const client = createBrowserClient();
     if (!client) return;
-    client.from('website_content').select('*').eq('is_active', true).then(({ data }) => setRows(data ?? []));
+
+    Promise.all([
+      client.from('library_settings').select('setting_key, setting_value').eq('is_public', true),
+      client.from('website_content').select('content_key, content_value').eq('is_active', true),
+    ]).then(([settingsRes, contentRes]) => {
+      if (settingsRes.data && settingsRes.data.length > 0) {
+        const sMap: Record<string, string> = {};
+        settingsRes.data.forEach((r) => { sMap[r.setting_key] = r.setting_value; });
+        setSettings((prev) => ({ ...prev, ...sMap }));
+      }
+      if (contentRes.data && contentRes.data.length > 0) {
+        const cMap: Record<string, string> = {};
+        contentRes.data.forEach((r) => { cMap[r.content_key] = r.content_value; });
+        setContent((prev) => ({ ...prev, ...cMap }));
+      }
+      setLoading(false);
+    });
   }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const client = createBrowserClient();
     if (!client) return;
-    await client.from('website_content').upsert({ page: 'home', content_key: selectedKey, content_value: value, content_type: 'text', is_active: true });
-    const { data } = await client.from('website_content').select('*').eq('is_active', true);
-    setRows(data ?? []);
+
+    // Save to library_settings (Centralized Business Settings)
+    const settingUpserts = Object.entries(settings).map(([key, val]) => ({
+      setting_key: key,
+      setting_value: val,
+      is_public: true,
+    }));
+    await client.from('library_settings').upsert(settingUpserts, { onConflict: 'setting_key' });
+
+    // Save to website_content (Hero / Section texts)
+    const contentUpserts = Object.entries(content).map(([key, val]) => ({
+      page: 'home',
+      content_key: key,
+      content_value: val,
+      content_type: 'text',
+      is_active: true,
+    }));
+    await client.from('website_content').upsert(contentUpserts, { onConflict: 'page,content_key' });
+
+    await writeAuditLog('business_settings_updated', 'library_settings', undefined, 'Updated business address, timings, and website content');
+    setMessage('Business address, location reference, timings, and website content saved successfully! All updates are live across the public site, navbar, contact section, and footer.');
   };
 
+  if (loading) {
+    return <div style={{ padding: 20, color: '#71717a' }}>Loading business content settings…</div>;
+  }
+
   return (
-    <Card title="Editable Website Content">
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
-        <select value={selectedKey} onChange={(e) => { setSelectedKey(e.target.value); const current = rows.find((r) => r.content_key === e.target.value); setValue(current?.content_value ?? ''); }} style={inputStyle}>
-          {defaults.map(([key]) => <option key={key} value={key}>{key}</option>)}
-        </select>
-        <textarea value={value} onChange={(e) => setValue(e.target.value)} rows={4} style={inputStyle} />
-        <button type="submit" style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', cursor: 'pointer', fontWeight: 700 }}>Save Content</button>
+    <div style={{ display: 'grid', gap: 20 }}>
+      {message && (
+        <div style={{ padding: 14, borderRadius: 10, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 20 }}>
+        {/* Business Location & Address */}
+        <Card title="Centralized Business Location & Address (Propagates to Navbar, Contact & Footer)">
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Address *</label>
+              <input
+                required
+                value={settings.address || ''}
+                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                placeholder="5, Roorkee, Jhabrera, Uttarakhand 247665"
+                style={inputStyle}
+              />
+              <span style={{ fontSize: 12, color: '#71717a', marginTop: 4, display: 'block' }}>
+                Displayed in topbar, contact card, footer, and member portal.
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location Reference / Landmark *</label>
+                <input
+                  required
+                  value={settings.location_ref || ''}
+                  onChange={(e) => setSettings({ ...settings, location_ref: e.target.value })}
+                  placeholder="Ambika Battery"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opening Hours / Timings *</label>
+                <input
+                  required
+                  value={settings.hours || ''}
+                  onChange={(e) => setSettings({ ...settings, hours: e.target.value })}
+                  placeholder="Open daily until 10 PM"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone Number Display</label>
+                <input
+                  value={settings.phone_display || ''}
+                  onChange={(e) => setSettings({ ...settings, phone_display: e.target.value })}
+                  placeholder="063967 59176"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp Digits (with country code)</label>
+                <input
+                  value={settings.whatsapp_number || ''}
+                  onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                  placeholder="916396759176"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Website Content Copy */}
+        <Card title="Public Website Section Headings & Text Copy">
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hero Title Heading</label>
+                <input
+                  value={content.hero_heading || ''}
+                  onChange={(e) => setContent({ ...content, hero_heading: e.target.value })}
+                  placeholder="RR FITNESS"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Section Heading</label>
+                <input
+                  value={content.contact_heading || ''}
+                  onChange={(e) => setContent({ ...content, contact_heading: e.target.value })}
+                  placeholder="Visit RR Fitness."
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hero Description</label>
+              <textarea
+                value={content.hero_description || ''}
+                onChange={(e) => setContent({ ...content, hero_description: e.target.value })}
+                rows={2}
+                placeholder="Train Hard. Stay Strong. A modern fitness destination in Jhabrera."
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Section Description</label>
+              <textarea
+                value={content.contact_description || ''}
+                onChange={(e) => setContent({ ...content, contact_description: e.target.value })}
+                rows={2}
+                placeholder="We are located in Jhabrera, Uttarakhand near Ambika Battery."
+                style={inputStyle}
+              />
+            </div>
+          </div>
+        </Card>
+
+        <button type="submit" style={{ padding: '14px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.3)' }}>
+          Save Business Address & Website Content
+        </button>
       </form>
-    </Card>
+    </div>
   );
 }
 

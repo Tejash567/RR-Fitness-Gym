@@ -89,7 +89,7 @@ function getStatusMeta(expiryDate: string | null, rawStatus: string) {
 
 export function MemberLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [memberCode, setMemberCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,19 +106,26 @@ export function MemberLoginPage() {
       return;
     }
 
-    const { data, error: authError } = await client.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch('/api/member/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberCode: memberCode.trim(), password }),
+      });
 
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
+      const data = await res.json();
 
-    if (data.user) {
+      if (!res.ok || !data.session) {
+        setError(data.error || 'Invalid Member ID or password.');
+        setLoading(false);
+        return;
+      }
+
+      await client.auth.setSession(data.session);
       router.replace('/member/dashboard');
+    } catch (err: any) {
+      setError('Invalid Member ID or password.');
+      setLoading(false);
     }
   };
 
@@ -130,7 +137,7 @@ export function MemberLoginPage() {
             <img src="/images/rr-fitness-logo.jpg" alt="RR Fitness logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff' }}>RR FITNESS</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Member Portal</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Member Portal Login</p>
         </div>
 
         {error && (
@@ -141,13 +148,13 @@ export function MemberLoginPage() {
 
         <form onSubmit={handleLogin} style={{ display: 'grid', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#d4d4d8', marginBottom: 6 }}>Email Address</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#d4d4d8', marginBottom: 6 }}>Member ID</label>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="member@rrfitness.com"
+              value={memberCode}
+              onChange={(e) => setMemberCode(e.target.value)}
+              placeholder="e.g. RR-F-0001"
               style={{ width: '100%', padding: '12px 14px', borderRadius: 8, background: '#18181b', border: '1px solid #27272a', color: '#ffffff', fontSize: 14 }}
             />
           </div>
