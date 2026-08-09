@@ -31,6 +31,7 @@ type MemberData = {
   start_date: string | null;
   expiry_date: string | null;
   membership_plan_id: string | null;
+  photo_url?: string | null;
   notes: string | null;
   membership_plans?: {
     id?: string;
@@ -510,14 +511,19 @@ export function MemberDashboardPage() {
 
         {/* Welcome Header */}
         <div style={{ background: 'linear-gradient(135deg, #18181b 0%, #121215 100%)', border: '1px solid #27272a', borderRadius: 16, padding: '24px 28px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
-              WELCOME BACK
-            </div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: '#ffffff' }}>{member.full_name.toUpperCase()}</h1>
-            <div style={{ marginTop: 6, fontSize: 13, color: '#a1a1aa', display: 'flex', gap: 16 }}>
-              <span>Member ID: <strong>{member.member_id || 'N/A'}</strong></span>
-              {member.phone && <span>Phone: {member.phone}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {member.photo_url ? (
+              <img src={member.photo_url} alt={member.full_name} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid #dc2626' }} />
+            ) : null}
+            <div>
+              <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
+                WELCOME BACK
+              </div>
+              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: '#ffffff' }}>{member.full_name.toUpperCase()}</h1>
+              <div style={{ marginTop: 6, fontSize: 13, color: '#a1a1aa', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                <span>Member ID: <strong>{member.member_id || 'N/A'}</strong></span>
+                {member.phone && <span>Phone: {member.phone}</span>}
+              </div>
             </div>
           </div>
 

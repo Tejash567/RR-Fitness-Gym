@@ -252,19 +252,62 @@ export default function LibrarySite() {
 
       <section className="announcement-section">
         <div className="container announcement-card">
-          <div className="announcement-label"><span className="announcement-dot" /> Gym Notice Board</div>
+          <div className="announcement-label">
+            <span className="announcement-dot" /> Gym Notice Board
+          </div>
           <div className="announcement-content">
-            {announcements.filter((item) => item.active).length ? (
-              announcements.filter((item) => item.active).map((announcement) => (
-                <div key={announcement.id}>
-                  <h3>{announcement.title}</h3>
-                  <p>{announcement.content}</p>
-                </div>
-              ))
+            {announcements.length ? (
+              <div className="space-y-4">
+                {announcements.map((announcement) => {
+                  const isPromotion = announcement.type === 'Promotion';
+                  const isFestival = announcement.type === 'Festival/Wish';
+                  const isImportant = announcement.type === 'Important Notice';
+
+                  return (
+                    <div
+                      key={announcement.id}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isImportant
+                          ? 'bg-red-50 border-red-200 text-red-950'
+                          : isPromotion
+                          ? 'bg-amber-50 border-amber-200 text-amber-950'
+                          : isFestival
+                          ? 'bg-purple-50 border-purple-200 text-purple-950'
+                          : 'bg-slate-50 border-slate-200 text-slate-900'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                              isImportant
+                                ? 'bg-red-600 text-white'
+                                : isPromotion
+                                ? 'bg-amber-600 text-white'
+                                : isFestival
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-slate-700 text-white'
+                            }`}
+                          >
+                            {announcement.type || 'General'}
+                          </span>
+                          <h3 className="m-0 text-base font-extrabold tracking-tight">{announcement.title}</h3>
+                        </div>
+                      </div>
+                      <p className="text-sm leading-relaxed mb-0 opacity-90">{announcement.content}</p>
+                      {announcement.imageUrl && (
+                        <div className="mt-3 rounded-lg overflow-hidden max-w-md border border-slate-200 shadow-xs">
+                          <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-cover max-h-60" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div>
-                <h3>Welcome to RR Fitness</h3>
-                <p>Visit us in Jhabrera or message us on WhatsApp for current gym updates.</p>
+                <h3>Welcome to RR Fitness Jhabrera</h3>
+                <p>Visit us on the main training floor or message us on WhatsApp for current gym updates.</p>
               </div>
             )}
           </div>
@@ -453,16 +496,32 @@ export default function LibrarySite() {
               )}
             </div>
           </div>
-          <div className="map-card">
-            <img src="/images/rr-fitness-exterior.jpg" alt="RR Fitness exterior view" />
-            <div className="map-card-shade" />
-            <div className="map-card-info">
-              <span className="eyebrow">RR FITNESS GYM</span>
-              <p>{currentConfig.address}{currentConfig.locationRef ? ` (Near ${currentConfig.locationRef})` : ''}</p>
-              <a href={currentConfig.directionsUrl} target="_blank" rel="noreferrer">
-                Open in Google Maps <ArrowRight size={15} />
-              </a>
+          <div className="map-card" style={{ background: 'linear-gradient(135deg, #18181b 0%, #09090b 100%)', border: '1px solid #27272a', borderRadius: 20, padding: 32, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(220, 38, 38, 0.15)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <MapPin size={24} />
+              </div>
+              <div>
+                <span className="eyebrow" style={{ color: '#dc2626', fontSize: 11, fontWeight: 800, letterSpacing: '0.15em' }}>RR FITNESS LOCATION</span>
+                <h3 style={{ margin: '2px 0 0', color: '#ffffff', fontSize: 20, fontWeight: 900 }}>Roorkee, Jhabrera</h3>
+              </div>
             </div>
+            <div style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 1.6 }}>
+              <p style={{ margin: 0, color: '#f4f4f5', fontWeight: 600 }}>{currentConfig.address}</p>
+              {currentConfig.locationRef && <p style={{ margin: '4px 0 0', color: '#a1a1aa', fontSize: 13 }}>Landmark: Near {currentConfig.locationRef}</p>}
+              <p style={{ margin: '8px 0 0', color: '#e4e4e7', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Clock3 size={15} color="#dc2626" /> {currentConfig.hours}
+              </p>
+            </div>
+            <a
+              href={currentConfig.directionsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="button button-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', background: '#dc2626', color: '#ffffff', fontWeight: 800, padding: '14px 20px', borderRadius: 12 }}
+            >
+              Open Directions in Google Maps <ArrowRight size={16} />
+            </a>
           </div>
         </div>
       </section>

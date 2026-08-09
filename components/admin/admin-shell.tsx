@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Bell,
-  Calendar,
   CreditCard,
   DollarSign,
   Dumbbell,
@@ -118,10 +117,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grid place-items-center bg-zinc-950 text-white">
+      <div className="min-h-screen grid place-items-center bg-slate-50 text-slate-900">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-semibold text-zinc-400">Loading RR Fitness Admin…</span>
+          <span className="text-sm font-semibold text-slate-600">Loading RR Fitness Admin…</span>
         </div>
       </div>
     );
@@ -129,18 +128,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (status === 'guest') {
     return (
-      <div className="min-h-screen grid place-items-center bg-zinc-950 p-6 text-white">
-        <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center shadow-2xl">
-          <div className="w-14 h-14 bg-red-950/80 border border-red-800 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen grid place-items-center bg-slate-50 p-6 text-slate-900">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-lg">
+          <div className="w-14 h-14 bg-red-50 border border-red-200 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <X size={28} />
           </div>
-          <h1 className="text-xl font-extrabold text-white mb-2">Admin Access Required</h1>
-          <p className="text-sm text-zinc-400 mb-6">
+          <h1 className="text-xl font-extrabold text-slate-900 mb-2">Admin Access Required</h1>
+          <p className="text-sm text-slate-600 mb-6">
             {error || 'Please sign in with an authorized RR Fitness administrator account.'}
           </p>
           <Link
             href="/admin/login"
-            className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors shadow-lg shadow-red-900/30"
+            className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors shadow-md shadow-red-600/20"
           >
             Go to Admin Login
           </Link>
@@ -150,32 +149,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col lg:flex-row antialiased selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col lg:flex-row antialiased selection:bg-red-600 selection:text-white">
       {/* MOBILE TOP NAVBAR */}
-      <header className="lg:hidden sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open mobile navigation"
-            className="p-2 rounded-lg bg-zinc-800/80 text-zinc-200 hover:text-white hover:bg-zinc-800 focus:outline-none"
+            className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 focus:outline-none transition-colors"
           >
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <img
               src="/images/rr-fitness-logo.jpg"
               alt="RR Fitness"
-              className="w-7 h-7 rounded-full border border-red-600 object-cover"
+              className="w-8 h-8 rounded-full border border-red-600 object-cover shadow-sm"
             />
             <div>
-              <div className="text-xs font-black tracking-widest text-red-600 uppercase">RR FITNESS</div>
-              <div className="text-sm font-bold text-white leading-none">{currentPageLabel}</div>
+              <div className="text-[10px] font-black tracking-widest text-red-600 uppercase leading-tight">
+                RR FITNESS
+              </div>
+              <div className="text-sm font-bold text-slate-900 leading-none">{currentPageLabel}</div>
             </div>
           </div>
         </div>
 
-        <div className="text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-          Admin
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            Admin
+          </span>
         </div>
       </header>
 
@@ -185,36 +188,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {/* Backdrop */}
           <div
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
           />
 
           {/* Drawer Sheet */}
-          <div className="relative w-80 max-w-[85vw] bg-zinc-950 border-r border-zinc-800 text-white flex flex-col h-full z-10 shadow-2xl animate-in slide-in-from-left duration-200">
-            {/* Header */}
-            <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+          <div className="relative w-80 max-w-[85vw] bg-white border-r border-slate-200 text-slate-900 flex flex-col h-full z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img
                   src="/images/rr-fitness-logo.jpg"
                   alt="RR Fitness"
-                  className="w-9 h-9 rounded-full border-2 border-red-600 object-cover"
+                  className="w-9 h-9 rounded-full border-2 border-red-600 object-cover shadow-sm"
                 />
                 <div>
                   <div className="text-xs font-extrabold tracking-widest text-red-600 uppercase">
                     RR FITNESS
                   </div>
-                  <div className="text-lg font-black text-white leading-tight">Admin Portal</div>
+                  <div className="text-base font-black text-slate-900 leading-tight">Admin Portal</div>
                 </div>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Nav Links */}
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            <nav className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
@@ -226,13 +229,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
                       isActive
-                        ? 'bg-red-600 text-white font-bold shadow-md shadow-red-900/40'
-                        : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
+                        ? 'bg-red-600 text-white font-bold shadow-sm shadow-red-600/30'
+                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
-                    <Icon size={18} className={isActive ? 'text-white' : 'text-zinc-400'} />
+                    <Icon size={18} className={isActive ? 'text-white' : 'text-slate-500'} />
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -240,11 +243,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </nav>
 
             {/* Logout button in drawer */}
-            <div className="p-4 border-t border-zinc-800">
+            <div className="p-4 border-t border-slate-100">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-950/70 border border-red-800/60 hover:bg-red-900 text-red-400 hover:text-white font-bold text-sm transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-50 border border-red-200 hover:bg-red-600 hover:border-red-600 text-red-700 hover:text-white font-bold text-sm transition-all"
               >
                 <LogOut size={16} />
                 <span>Logout</span>
@@ -255,18 +258,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:flex flex-col w-64 bg-zinc-950 border-r border-zinc-800/80 p-5 shrink-0 min-h-screen">
+      <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 min-h-screen shadow-sm">
         <div className="mb-6 flex items-center gap-3 px-2">
           <img
             src="/images/rr-fitness-logo.jpg"
             alt="RR Fitness"
-            className="w-10 h-10 rounded-full border-2 border-red-600 object-cover shadow-lg"
+            className="w-10 h-10 rounded-full border-2 border-red-600 object-cover shadow-sm"
           />
           <div>
             <div className="text-[11px] font-black tracking-widest text-red-600 uppercase">
               RR FITNESS
             </div>
-            <div className="text-xl font-black text-white tracking-tight leading-none">
+            <div className="text-lg font-black text-slate-900 tracking-tight leading-none">
               Admin Portal
             </div>
           </div>
@@ -283,24 +286,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-red-600 text-white font-bold shadow-md shadow-red-900/40'
-                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'
+                    ? 'bg-red-600 text-white font-bold shadow-sm shadow-red-600/30'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-white' : 'text-zinc-400'} />
+                <Icon size={18} className={isActive ? 'text-white' : 'text-slate-400'} />
                 <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="pt-4 border-t border-zinc-800/80 mt-4">
+        <div className="pt-4 border-t border-slate-100 mt-4">
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-red-600 hover:border-red-600 text-zinc-300 hover:text-white font-bold text-sm transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-100 border border-slate-200 hover:bg-red-600 hover:border-red-600 text-slate-700 hover:text-white font-bold text-sm transition-all"
           >
             <LogOut size={16} />
             <span>Logout</span>
@@ -309,17 +312,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* MAIN CONTENT WORKSPACE */}
-      <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 bg-zinc-900/40 text-zinc-100">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 bg-slate-50 text-slate-900">
         {/* DESKTOP HEADER */}
-        <div className="hidden lg:flex items-center justify-between mb-8 pb-4 border-b border-zinc-800/60">
+        <div className="hidden lg:flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
           <div>
-            <div className="text-xs font-black tracking-widest text-red-500 uppercase">
+            <div className="text-xs font-black tracking-widest text-red-600 uppercase">
               Gym Management Dashboard
             </div>
-            <h1 className="text-2xl font-black text-white mt-1 tracking-tight">{greetingTitle}</h1>
+            <h1 className="text-2xl font-black text-slate-900 mt-1 tracking-tight">{greetingTitle}</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full">
+            <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
               RR Fitness Admin Workspace
             </span>
           </div>

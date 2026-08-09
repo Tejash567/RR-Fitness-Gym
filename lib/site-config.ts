@@ -6,6 +6,10 @@ export type Announcement = {
   startDate: string;
   expiryDate: string;
   createdDate: string;
+  type?: 'Promotion' | 'Festival/Wish' | 'Important Notice' | 'General';
+  priority?: 'high' | 'medium' | 'low';
+  imageUrl?: string;
+  visibility?: 'PUBLIC' | 'MEMBER' | 'BOTH';
 };
 
 export type Facility = {

@@ -1,5 +1,6 @@
 import { type Announcement, type Facility, type GalleryItem, type MembershipPlan, type PublicSiteData, type SocialLinks, libraryConfig } from './site-config';
 import { createBrowserClient } from './supabase';
+import { parseLocalDate } from './membership';
 
 function mapContentRows(rows: Array<{ content_key?: string; content_value?: string }> | null | undefined) {
   return (rows ?? []).reduce<Record<string, string>>((acc, row) => {
@@ -28,8 +29,9 @@ function mapSocialRows(rows: Array<{ platform?: string; url?: string }> | null |
   }, {});
 }
 
-function normalizeAnnouncements(rows: Array<any> | null | undefined): Announcement[] {
-  const now = new Date();
+function normalizeAnnouncements(rows: Array<any> | null | undefined, targetAudience: 'PUBLIC' | 'MEMBER' = 'PUBLIC'): Announcement[] {
+  const today = new Date();
+
   return (rows ?? [])
     .map((row) => ({
       id: row.id,
@@ -39,23 +41,47 @@ function normalizeAnnouncements(rows: Array<any> | null | undefined): Announceme
       startDate: row.start_at ?? row.startDate ?? '',
       expiryDate: row.expires_at ?? row.expiryDate ?? '',
       createdDate: row.created_at ?? row.createdDate ?? '',
+      type: row.type ?? 'General',
+      priority: row.priority ?? 'medium',
+      imageUrl: row.image_url ?? undefined,
+      visibility: (row.visibility as 'PUBLIC' | 'MEMBER' | 'BOTH') ?? 'BOTH',
     }))
     .filter((announcement) => {
-      // Filter out expired announcements for public display
+      if (!announcement.active) return false;
+
+      // Visibility filter
+      const vis = announcement.visibility || 'BOTH';
+      if (targetAudience === 'PUBLIC' && vis !== 'PUBLIC' && vis !== 'BOTH') {
+        return false;
+      }
+      if (targetAudience === 'MEMBER' && vis !== 'MEMBER' && vis !== 'BOTH') {
+        return false;
+      }
+
+      // Filter out expired announcements for public / active view
       if (announcement.expiryDate) {
-        const expiryDate = new Date(announcement.expiryDate);
-        if (expiryDate < now) {
-          return false;
+        const expiryDate = parseLocalDate(announcement.expiryDate);
+        if (expiryDate) {
+          // Set to end of the expiry day
+          expiryDate.setHours(23, 59, 59, 999);
+          if (expiryDate < today) {
+            return false;
+          }
         }
       }
+
       // Check start date
       if (announcement.startDate) {
-        const startDate = new Date(announcement.startDate);
-        if (startDate > now) {
-          return false;
+        const startDate = parseLocalDate(announcement.startDate);
+        if (startDate) {
+          startDate.setHours(0, 0, 0, 0);
+          if (startDate > today) {
+            return false;
+          }
         }
       }
-      return announcement.active;
+
+      return true;
     });
 }
 
