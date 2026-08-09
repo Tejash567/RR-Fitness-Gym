@@ -34,11 +34,78 @@ const navItems = [
 ];
 
 const defaultGalleryItems = [
-  { id: 'def-1', image: '/images/rr-fitness-gym-interior.jpg', title: 'Modern Gym Floor', category: 'Training Area', alt: 'RR Fitness gym interior' },
-  { id: 'def-2', image: '/images/rr-fitness-dumbbell-area.jpg', title: 'Dumbbell & Free Weights', category: 'Free Weights', alt: 'RR Fitness dumbbell area' },
-  { id: 'def-3', image: '/images/rr-fitness-dumbbells.jpg', title: 'Weight Racks & Equipment', category: 'Equipment', alt: 'RR Fitness dumbbells' },
-  { id: 'def-4', image: '/images/rr-fitness-entrance.jpg', title: 'Main Gym Entrance', category: 'Entrance', alt: 'RR Fitness entrance' },
-  { id: 'def-5', image: '/images/rr-fitness-exterior.jpg', title: 'RR Fitness Location', category: 'Exterior', alt: 'RR Fitness exterior' },
+  {
+    id: 'def-1',
+    image: '/images/rr-fitness-reception.jpg',
+    title: 'Reception & Entrance',
+    category: 'Reception',
+    alt: 'Reception & Entrance',
+    displayOrder: 1,
+    description: 'A welcoming entrance area leading into RR Fitness.',
+  },
+  {
+    id: 'def-2',
+    image: '/images/rr-fitness-lobby.jpg',
+    title: 'Gym Lobby',
+    category: 'Lobby',
+    alt: 'Gym Lobby',
+    displayOrder: 2,
+    description: 'The main lobby and facility area of RR Fitness.',
+  },
+  {
+    id: 'def-3',
+    image: '/images/rr-fitness-womens-facility.jpg',
+    title: "Women's Facility",
+    category: 'Facilities',
+    alt: "Women's Facility",
+    displayOrder: 3,
+    description: 'Clean and convenient facilities for female members.',
+  },
+  {
+    id: 'def-4',
+    image: '/images/rr-fitness-gym-entrance.jpg',
+    title: 'RR Fitness Entrance',
+    category: 'Entrance',
+    alt: 'RR Fitness Entrance',
+    displayOrder: 4,
+    description: 'The dedicated entrance leading to the RR Fitness training area.',
+  },
+  {
+    id: 'def-5',
+    image: '/images/rr-fitness-dumbbell-area.jpg',
+    title: 'Free Weights Area',
+    category: 'Free Weights',
+    alt: 'Free Weights Area',
+    displayOrder: 5,
+    description: 'A dedicated area with dumbbells and free-weight equipment for strength training.',
+  },
+  {
+    id: 'def-6',
+    image: '/images/rr-fitness-cardio-conditioning.jpg',
+    title: 'Cardio & Conditioning',
+    category: 'Cardio',
+    alt: 'Cardio & Conditioning',
+    displayOrder: 6,
+    description: 'Cardio and conditioning equipment for improving endurance and fitness.',
+  },
+  {
+    id: 'def-7',
+    image: '/images/rr-fitness-gym-interior-2.jpg',
+    title: 'Gym Interior',
+    category: 'Interior',
+    alt: 'Gym Interior',
+    displayOrder: 7,
+    description: 'A wide view of the RR Fitness training floor and equipment.',
+  },
+  {
+    id: 'def-8',
+    image: '/images/rr-fitness-location.jpg',
+    title: 'Our Location',
+    category: 'Location',
+    alt: 'Our Location',
+    displayOrder: 8,
+    description: 'A view of the area surrounding RR Fitness.',
+  },
 ];
 
 function WhatsAppButton({ message = whatsappMessages.general, children, className = '' }: { message?: string; children: React.ReactNode; className?: string }) {
@@ -88,7 +155,7 @@ export default function LibrarySite() {
   const content = siteData.websiteContent as Record<string, string>;
 
   const copyAddress = async () => {
-    await navigator.clipboard.writeText(`${currentConfig.address} (Near ${currentConfig.locationRef})`);
+    await navigator.clipboard.writeText(`${currentConfig.address}${currentConfig.locationRef ? ` (Near ${currentConfig.locationRef})` : ''}`);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
@@ -99,7 +166,7 @@ export default function LibrarySite() {
         <div className="container topbar-inner">
           <span><Clock3 size={14} /> {currentConfig.hours}</span>
           <span className="topbar-divider" />
-          <span><MapPin size={14} /> {currentConfig.addressShort} (Near {currentConfig.locationRef})</span>
+          <span><MapPin size={14} /> {currentConfig.addressShort || currentConfig.address}{currentConfig.locationRef ? ` (Near ${currentConfig.locationRef})` : ''}</span>
           <a href={`tel:${currentConfig.phoneDigits}`}><Phone size={14} /> {currentConfig.phoneDisplay}</a>
         </div>
       </div>
@@ -164,11 +231,11 @@ export default function LibrarySite() {
           </div>
           <div className="hero-visual">
             <div className="hero-image-wrap">
-              <img src="/images/rr-fitness-gym-interior.jpg" alt="RR Fitness gym interior" />
+              <img src="/images/rr-fitness-training-floor.jpg" alt="Training Floor - RR Fitness" />
               <div className="image-shade" />
               <div className="hero-image-caption">
                 <span className="caption-dot" />
-                <span>Train Hard. Stay Strong.</span>
+                <span>Training Floor</span>
               </div>
             </div>
             <div className="hero-note">
@@ -208,10 +275,10 @@ export default function LibrarySite() {
         <div className="container about-grid">
           <div className="about-images">
             <div className="about-main-image">
-              <img src="/images/rr-fitness-dumbbell-area.jpg" alt="RR Fitness dumbbell area" />
+              <img src="/images/rr-fitness-strength-area.jpg" alt="Strength Training Area - RR Fitness" />
             </div>
             <div className="about-small-image">
-              <img src="/images/rr-fitness-entrance.jpg" alt="RR Fitness gym entrance" />
+              <img src="/images/rr-fitness-cardio-zone.jpg" alt="Cardio Zone - RR Fitness" />
             </div>
             <div className="experience-stamp">
               <span className="stamp-star">✦</span>
@@ -322,6 +389,11 @@ export default function LibrarySite() {
                 <figcaption>
                   <span>{item.category}</span>
                   <strong>{item.title}</strong>
+                  {item.description && (
+                    <p className="gallery-item-desc" style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.75)', marginTop: 4, lineHeight: 1.3 }}>
+                      {item.description}
+                    </p>
+                  )}
                 </figcaption>
               </figure>
             ))}
@@ -386,7 +458,7 @@ export default function LibrarySite() {
             <div className="map-card-shade" />
             <div className="map-card-info">
               <span className="eyebrow">RR FITNESS GYM</span>
-              <p>{currentConfig.address} (Near {currentConfig.locationRef})</p>
+              <p>{currentConfig.address}{currentConfig.locationRef ? ` (Near ${currentConfig.locationRef})` : ''}</p>
               <a href={currentConfig.directionsUrl} target="_blank" rel="noreferrer">
                 Open in Google Maps <ArrowRight size={15} />
               </a>
@@ -425,7 +497,7 @@ export default function LibrarySite() {
         </div>
         <div className="container footer-bottom">
           <span>© {new Date().getFullYear()} RR Fitness</span>
-          <span>{currentConfig.addressShort}</span>
+          <span>{currentConfig.addressShort || currentConfig.address}</span>
         </div>
       </footer>
     </main>

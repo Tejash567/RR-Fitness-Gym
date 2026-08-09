@@ -31,6 +31,7 @@ export type GalleryItem = {
   category: string;
   alt: string;
   displayOrder: number;
+  description?: string;
 };
 
 export type SocialLinks = {

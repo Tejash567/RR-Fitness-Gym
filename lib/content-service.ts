@@ -107,6 +107,7 @@ function normalizeGallery(rows: Array<any> | null | undefined): GalleryItem[] {
     category: row.category ?? 'Gallery',
     alt: row.alt_text ?? row.alt ?? '',
     displayOrder: Number(row.display_order ?? 0),
+    description: row.description ?? '',
   }));
 }
 
@@ -154,6 +155,8 @@ export async function loadPublicSiteData(): Promise<PublicSiteData> {
     };
 
     const settings = mapSettingsRows(settingsRes.data);
+    const currentAddress = settings.address ?? libraryConfig.address;
+    const currentAddressShort = settings.address_short ?? settings.address ?? libraryConfig.addressShort ?? libraryConfig.address;
 
     return {
       announcements: normalizeAnnouncements(announcementsRes.data),
@@ -164,8 +167,8 @@ export async function loadPublicSiteData(): Promise<PublicSiteData> {
       libraryConfig: {
         ...libraryConfig,
         name: settings.business_name ?? libraryConfig.name,
-        address: settings.address ?? libraryConfig.address,
-        addressShort: settings.address ?? libraryConfig.addressShort,
+        address: currentAddress,
+        addressShort: currentAddressShort,
         locationRef: settings.location_ref ?? libraryConfig.locationRef,
         hours: settings.hours ?? libraryConfig.hours,
         phoneDisplay: settings.phone_display ?? libraryConfig.phoneDisplay,

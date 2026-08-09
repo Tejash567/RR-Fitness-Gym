@@ -3,17 +3,22 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  AlertCircle,
   AlertTriangle,
   ArrowUpRight,
   Calendar,
   CheckCircle2,
   Clock,
+  Copy,
+  CreditCard,
   DollarSign,
   Download,
+  Dumbbell,
   Edit,
   Eye,
   FileText,
   Filter,
+  Megaphone,
   Plus,
   Search,
   ShieldAlert,
@@ -22,6 +27,7 @@ import {
   TrendingUp,
   UserCheck,
   Users,
+  X,
   XCircle,
 } from 'lucide-react';
 import {
@@ -41,22 +47,26 @@ import {
 } from 'recharts';
 import { createBrowserClient } from '@/lib/supabase';
 
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #d7ded8',
-  background: '#fffefb',
-  fontSize: 14,
-} as const;
+const inputClassName =
+  'w-full px-3 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-100 text-sm focus:outline-none focus:border-red-600 transition-colors';
 
 type Row = Record<string, any>;
 
-function Card({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  action,
+  className,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div style={{ background: '#fffefb', border: '1px solid #d7ded8', borderRadius: 14, padding: 20, boxShadow: '0 8px 18px rgba(24,50,45,0.03)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h3 style={{ margin: 0, color: '#0f0f11', fontSize: 17, fontWeight: 800 }}>{title}</h3>
+    <div className={`bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 shadow-xl ${className || ''}`}>
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800/60">
+        <h3 className="m-0 text-white text-base sm:text-lg font-extrabold tracking-tight">{title}</h3>
         {action}
       </div>
       {children}
@@ -64,17 +74,32 @@ function Card({ title, children, action }: { title: string; children: React.Reac
   );
 }
 
-function StatCard({ title, value, subtext, icon, color = '#dc2626' }: { title: string; value: string | number; subtext?: string; icon: React.ReactNode; color?: string }) {
+function StatCard({
+  title,
+  value,
+  subtext,
+  icon,
+  color = '#dc2626',
+}: {
+  title: string;
+  value: string | number;
+  subtext?: string;
+  icon: React.ReactNode;
+  color?: string;
+}) {
   return (
-    <div style={{ background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: 14, padding: 18, boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 13, color: '#71717a', fontWeight: 600 }}>{title}</span>
-        <div style={{ width: 34, height: 34, borderRadius: 8, background: `${color}15`, color, display: 'grid', placeItems: 'center' }}>
+    <div className="bg-zinc-900 border border-zinc-800/80 rounded-xl p-3.5 sm:p-4 shadow-lg flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-zinc-400 truncate pr-1">{title}</span>
+        <div
+          className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center"
+          style={{ backgroundColor: `${color}20`, color }}
+        >
           {icon}
         </div>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 900, color: '#09090b', letterSpacing: '-0.02em' }}>{value}</div>
-      {subtext && <div style={{ fontSize: 12, color: '#71717a', marginTop: 4 }}>{subtext}</div>}
+      <div className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">{value}</div>
+      {subtext && <div className="text-[11px] text-zinc-400 mt-1 truncate">{subtext}</div>}
     </div>
   );
 }
@@ -170,7 +195,6 @@ export function AdminDashboardPage() {
       const allExpenses = expensesData ?? [];
       const allAttendance = attendanceData ?? [];
 
-      // Calculate Member Metrics
       let activeCount = 0;
       let expiringSoonCount = 0;
       let expiredCount = 0;
@@ -184,7 +208,6 @@ export function AdminDashboardPage() {
         } else if (status.label === 'Expired') expiredCount++;
       });
 
-      // Calculate Financials for This Month
       const thisMonthPayments = allPayments.filter((p) => (p.payment_date ?? '').startsWith(currentMonthStr));
       const thisMonthRevenue = thisMonthPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
 
@@ -206,7 +229,6 @@ export function AdminDashboardPage() {
 
       setRecentPayments(allPayments.slice(0, 5));
 
-      // Build Attendance Chart Data (Last 7 Days)
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
@@ -220,7 +242,6 @@ export function AdminDashboardPage() {
       });
       setAttendanceChartData(attChart);
 
-      // Build Monthly Financial Chart Data (Last 6 Months)
       const last6Months = Array.from({ length: 6 }, (_, i) => {
         const d = new Date();
         d.setMonth(d.getMonth() - (5 - i));
@@ -235,9 +256,8 @@ export function AdminDashboardPage() {
       });
       setFinancialChartData(finChart);
 
-      // Distribution Chart Data
       setMemberDistData([
-        { name: 'Active', value: activeCount - expiringSoonCount, color: '#10b981' },
+        { name: 'Active', value: Math.max(0, activeCount - expiringSoonCount), color: '#10b981' },
         { name: 'Expiring Soon', value: expiringSoonCount, color: '#f59e0b' },
         { name: 'Expired', value: expiredCount, color: '#ef4444' },
       ]);
@@ -252,37 +272,44 @@ export function AdminDashboardPage() {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#71717a' }}>Loading gym analytics…</div>;
+    return <div className="py-12 text-center text-zinc-400 text-sm">Loading gym analytics…</div>;
   }
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      {error && <div style={{ padding: 14, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, color: '#dc2626' }}>{error}</div>}
+    <div className="space-y-6">
+      {error && (
+        <div className="p-3.5 bg-red-950/80 border border-red-800 rounded-xl text-red-300 text-sm font-medium">
+          {error}
+        </div>
+      )}
 
-      {/* 8 Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+      {/* 8 STAT CARDS: MOBILE 2 PER ROW, DESKTOP 4 PER ROW */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard title="Total Members" value={stats.totalMembers} icon={<Users size={18} />} color="#3b82f6" />
         <StatCard title="Active Members" value={stats.activeMembers} icon={<UserCheck size={18} />} color="#10b981" />
-        <StatCard title="Expiring Soon (7d)" value={stats.expiringSoon} icon={<AlertTriangle size={18} />} color="#f59e0b" />
+        <StatCard title="Expiring Soon" value={stats.expiringSoon} icon={<AlertTriangle size={18} />} color="#f59e0b" />
         <StatCard title="Expired Members" value={stats.expiredMembers} icon={<XCircle size={18} />} color="#ef4444" />
         <StatCard title="Today's Attendance" value={stats.todayAttendance} icon={<Activity size={18} />} color="#8b5cf6" />
-        <StatCard title="This Month Revenue" value={formatINR(stats.thisMonthRevenue)} icon={<DollarSign size={18} />} color="#10b981" />
-        <StatCard title="This Month Expenses" value={formatINR(stats.thisMonthExpenses)} icon={<TrendingDown size={18} />} color="#ef4444" />
-        <StatCard title="This Month Profit" value={formatINR(stats.thisMonthProfit)} icon={<TrendingUp size={18} />} color={stats.thisMonthProfit >= 0 ? '#10b981' : '#ef4444'} />
+        <StatCard title="Monthly Revenue" value={formatINR(stats.thisMonthRevenue)} icon={<DollarSign size={18} />} color="#10b981" />
+        <StatCard title="Monthly Expenses" value={formatINR(stats.thisMonthExpenses)} icon={<TrendingDown size={18} />} color="#ef4444" />
+        <StatCard title="Monthly Profit" value={formatINR(stats.thisMonthProfit)} icon={<TrendingUp size={18} />} color={stats.thisMonthProfit >= 0 ? '#10b981' : '#ef4444'} />
       </div>
 
-      {/* Charts Row 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 18 }}>
+      {/* CHARTS ROW 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Monthly Revenue vs Expenses vs Profit">
           {financialChartData.some((d) => d.Revenue > 0 || d.Expenses > 0) ? (
-            <div style={{ width: '100%', height: 280 }}>
-              <ResponsiveContainer>
-                <BarChart data={financialChartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                  <XAxis dataKey="month" stroke="#71717a" fontSize={12} />
-                  <YAxis stroke="#71717a" fontSize={12} />
-                  <Tooltip formatter={(val: any) => formatINR(Number(val))} />
-                  <Legend />
+            <div className="w-full h-64 sm:h-72 overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={financialChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis dataKey="month" stroke="#a1a1aa" fontSize={11} />
+                  <YAxis stroke="#a1a1aa" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
+                    formatter={(val: any) => formatINR(Number(val))}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, color: '#a1a1aa' }} />
                   <Bar dataKey="Revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Profit" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -290,67 +317,69 @@ export function AdminDashboardPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div style={{ height: 200, display: 'grid', placeItems: 'center', color: '#a1a1aa' }}>No financial data available</div>
+            <div className="h-48 flex items-center justify-center text-zinc-500 text-sm">No financial data available</div>
           )}
         </Card>
 
         <Card title="Daily Attendance (Last 7 Days)">
           {attendanceChartData.some((d) => d.visits > 0) ? (
-            <div style={{ width: '100%', height: 280 }}>
-              <ResponsiveContainer>
-                <LineChart data={attendanceChartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                  <XAxis dataKey="date" stroke="#71717a" fontSize={12} />
-                  <YAxis stroke="#71717a" fontSize={12} allowDecimals={false} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="visits" stroke="#dc2626" strokeWidth={3} dot={{ r: 5, fill: '#dc2626' }} />
+            <div className="w-full h-64 sm:h-72 overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={attendanceChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis dataKey="date" stroke="#a1a1aa" fontSize={11} />
+                  <YAxis stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }} />
+                  <Line type="monotone" dataKey="visits" stroke="#dc2626" strokeWidth={3} dot={{ r: 4, fill: '#dc2626' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div style={{ height: 200, display: 'grid', placeItems: 'center', color: '#a1a1aa' }}>No attendance data available</div>
+            <div className="h-48 flex items-center justify-center text-zinc-500 text-sm">No attendance data available</div>
           )}
         </Card>
       </div>
 
-      {/* Row 2: Distribution & Recent Payments */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 18 }}>
-        <Card title="Member Membership Status Distribution">
+      {/* ROW 2: DISTRIBUTION & RECENT PAYMENTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card title="Member Status Distribution">
           {memberDistData.some((d) => d.value > 0) ? (
-            <div style={{ width: '100%', height: 240, display: 'flex', alignItems: 'center' }}>
-              <ResponsiveContainer>
+            <div className="w-full h-64 flex items-center justify-center overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={memberDistData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(entry) => `${entry.name}: ${entry.value}`}>
+                  <Pie data={memberDistData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={(entry) => `${entry.name}: ${entry.value}`}>
                     {memberDistData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div style={{ height: 200, display: 'grid', placeItems: 'center', color: '#a1a1aa' }}>No member data available</div>
+            <div className="h-48 flex items-center justify-center text-zinc-500 text-sm">No member data available</div>
           )}
         </Card>
 
         <Card title="Recent Payment Transactions">
           {recentPayments.length > 0 ? (
-            <div style={{ display: 'grid', gap: 10 }}>
+            <div className="space-y-3">
               {recentPayments.map((p) => (
-                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f4f4f5', paddingBottom: 8 }}>
+                <div key={p.id} className="flex items-center justify-between pb-2.5 border-b border-zinc-800/60 last:border-0">
                   <div>
-                    <div style={{ fontWeight: 700, color: '#09090b', fontSize: 14 }}>
+                    <div className="font-bold text-white text-sm">
                       {p.members?.full_name || 'Member'} {p.members?.member_code ? `(${p.members.member_code})` : ''}
                     </div>
-                    <div style={{ fontSize: 12, color: '#71717a' }}>{p.payment_date} • {p.payment_method.toUpperCase()}</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">
+                      {p.payment_date} • {p.payment_method.toUpperCase()}
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 800, color: '#10b981', fontSize: 15 }}>{formatINR(Number(p.amount))}</div>
+                  <div className="font-extrabold text-emerald-400 text-sm">{formatINR(Number(p.amount))}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ color: '#71717a', fontSize: 14, textAlign: 'center', padding: '24px 0' }}>No payment records yet.</div>
+            <div className="py-8 text-center text-zinc-500 text-sm">No payment records yet.</div>
           )}
         </Card>
       </div>
@@ -378,6 +407,38 @@ export function MembersPage() {
   const [createdCredentials, setCreatedCredentials] = useState<{ memberName: string; memberCode: string; password: string } | null>(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
 
+  const [form, setForm] = useState({
+    id: '',
+    member_code: '',
+    full_name: '',
+    phone: '',
+    email: '',
+    gender: '',
+    dob: '',
+    address: '',
+    emergency_contact: '',
+    membership_plan_id: '',
+    start_date: '',
+    expiry_date: '',
+    status: 'active',
+    notes: '',
+  });
+
+  const loadData = async () => {
+    const client = createBrowserClient();
+    if (!client) return;
+    const [{ data: membersData }, { data: plansData }] = await Promise.all([
+      client.from('members').select('*, membership_plans(name, price)').order('created_at', { ascending: false }),
+      client.from('membership_plans').select('id, name, price, duration_days').eq('is_active', true),
+    ]);
+    setMembers(membersData ?? []);
+    setPlans(plansData ?? []);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const handlePortalSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!portalModal) return;
@@ -386,7 +447,7 @@ export function MembersPage() {
 
     try {
       const client = createBrowserClient();
-      const { data: sessionRes } = await client?.auth.getSession() ?? {};
+      const { data: sessionRes } = (await client?.auth.getSession()) ?? {};
       const token = sessionRes?.session?.access_token;
 
       const res = await fetch('/api/admin/portal-account', {
@@ -428,38 +489,6 @@ export function MembersPage() {
       setPortalLoading(false);
     }
   };
-
-  const [form, setForm] = useState({
-    id: '',
-    member_code: '',
-    full_name: '',
-    phone: '',
-    email: '',
-    gender: '',
-    dob: '',
-    address: '',
-    emergency_contact: '',
-    membership_plan_id: '',
-    start_date: '',
-    expiry_date: '',
-    status: 'active',
-    notes: '',
-  });
-
-  const loadData = async () => {
-    const client = createBrowserClient();
-    if (!client) return;
-    const [{ data: membersData }, { data: plansData }] = await Promise.all([
-      client.from('members').select('*, membership_plans(name, price)').order('created_at', { ascending: false }),
-      client.from('membership_plans').select('id, name, price, duration_days').eq('is_active', true),
-    ]);
-    setMembers(membersData ?? []);
-    setPlans(plansData ?? []);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const openProfileModal = async (member: Row) => {
     setSelectedMember(member);
@@ -515,17 +544,36 @@ export function MembersPage() {
 
     if (form.id) {
       const { error } = await client.from('members').update(payload).eq('id', form.id);
-      if (error) { setMessage(error.message); return; }
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
       await writeAuditLog('member_edited', 'members', form.id, `Updated details for member ${form.full_name}`);
     } else {
       const { error } = await client.from('members').insert(payload);
-      if (error) { setMessage(error.message); return; }
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
       await writeAuditLog('member_created', 'members', undefined, `Created member ${form.full_name}`);
     }
 
     await loadData();
     setForm({
-      id: '', member_code: '', full_name: '', phone: '', email: '', gender: '', dob: '', address: '', emergency_contact: '', membership_plan_id: '', start_date: '', expiry_date: '', status: 'active', notes: ''
+      id: '',
+      member_code: '',
+      full_name: '',
+      phone: '',
+      email: '',
+      gender: '',
+      dob: '',
+      address: '',
+      emergency_contact: '',
+      membership_plan_id: '',
+      start_date: '',
+      expiry_date: '',
+      status: 'active',
+      notes: '',
     });
     setMessage('Member record saved successfully.');
   };
@@ -554,7 +602,7 @@ export function MembersPage() {
   const handleToggleDeactivate = async (member: Row) => {
     const client = createBrowserClient();
     if (!client) return;
-    const newStatus = member.status === 'inactive' ? 'active' : 'inactive';
+    const newStatus = member.status === 'inactive' || member.status === 'deactivated' ? 'active' : 'inactive';
     if (!window.confirm(`${newStatus === 'inactive' ? 'Deactivate' : 'Reactivate'} member ${member.full_name}?`)) return;
 
     const { error } = await client.from('members').update({ status: newStatus }).eq('id', member.id);
@@ -568,258 +616,423 @@ export function MembersPage() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>{message}</div>}
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
-        {/* Member List */}
-        <Card title={`All Gym Members (${filteredMembers.length})`}>
-          <div style={{ position: 'relative', marginBottom: 14 }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#a1a1aa' }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search member name, phone, or Member ID..."
-              style={{ ...inputStyle, paddingLeft: 36 }}
-            />
-          </div>
+      {/* RESPONSIVE LAYOUT GRID: SINGLE COLUMN MOBILE, 12 COLUMNS DESKTOP */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* MEMBER LIST */}
+        <div className="lg:col-span-7 space-y-4">
+          <Card title={`All Gym Members (${filteredMembers.length})`}>
+            <div className="relative mb-4">
+              <Search size={16} className="absolute left-3 top-3 text-zinc-500" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, phone, or Member ID..."
+                className={`${inputClassName} pl-9`}
+              />
+            </div>
 
-          <div style={{ display: 'grid', gap: 10, maxHeight: 600, overflowY: 'auto' }}>
-            {filteredMembers.map((m) => {
-              const statusMeta = getCalculatedStatus(m.expiry_date, m.status);
-              return (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e4e4e7', borderRadius: 10, background: '#ffffff' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong style={{ fontSize: 15, color: '#09090b' }}>{m.full_name}</strong>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: '#f4f4f5', color: '#52525b', fontWeight: 700 }}>
-                        {m.member_code || 'No ID'}
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {filteredMembers.map((m) => {
+                const statusMeta = getCalculatedStatus(m.expiry_date, m.status);
+                return (
+                  <div
+                    key={m.id}
+                    className="p-3.5 bg-zinc-950/80 border border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-white text-base">{m.full_name}</span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 border border-zinc-700">
+                          {m.member_code || 'No ID'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-1">
+                        Phone: <strong className="text-zinc-300">{m.phone}</strong> • Plan: <strong className="text-zinc-300">{m.membership_plans?.name || 'Unassigned'}</strong>
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-0.5">
+                        Expires: <strong className="text-zinc-300">{m.expiry_date || 'N/A'}</strong>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-zinc-800">
+                      <span
+                        className="text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0"
+                        style={{ color: statusMeta.color, backgroundColor: `${statusMeta.color}20` }}
+                      >
+                        {statusMeta.label}
                       </span>
-                    </div>
-                    <div style={{ fontSize: 12, color: '#71717a', marginTop: 4 }}>
-                      Phone: {m.phone} • Plan: {m.membership_plans?.name || 'Unassigned'}
+                      <button
+                        type="button"
+                        onClick={() => openProfileModal(m)}
+                        className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
+                      >
+                        <Eye size={14} /> Profile
+                      </button>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 12, fontWeight: 800, color: statusMeta.color, background: `${statusMeta.color}15` }}>
-                      {statusMeta.label}
-                    </span>
-                    <button type="button" onClick={() => openProfileModal(m)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #d4d4d8', background: '#ffffff', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Eye size={14} /> Profile
-                    </button>
-                  </div>
+        {/* ADD / EDIT MEMBER FORM */}
+        <div className="lg:col-span-5 space-y-4">
+          <Card title={form.id ? 'Edit Member Profile' : 'Add New Gym Member'}>
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Member Code ID</label>
+                  <input
+                    value={form.member_code}
+                    onChange={(e) => setForm({ ...form, member_code: e.target.value })}
+                    placeholder="Auto: RR-F-0001"
+                    className={inputClassName}
+                  />
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Full Name *</label>
+                  <input
+                    required
+                    value={form.full_name}
+                    onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                    placeholder="Full Name"
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
 
-        {/* Add/Edit Member Form */}
-        <Card title={form.id ? 'Edit Member Profile' : 'Add New Gym Member'}>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Member Code ID</label>
-                <input value={form.member_code} onChange={(e) => setForm({ ...form, member_code: e.target.value })} placeholder="Auto: RR-F-0001" style={inputStyle} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Phone Number *</label>
+                  <input
+                    required
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="Phone Number"
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Email Address</label>
+                  <input
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="Email Address"
+                    className={inputClassName}
+                  />
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Full Name *</label>
-                <input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full Name" style={inputStyle} />
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Phone Number *</label>
-                <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone Number" style={inputStyle} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Gender</label>
+                  <select
+                    value={form.gender}
+                    onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                    className={inputClassName}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={form.dob}
+                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Email Address</label>
-                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email Address" style={inputStyle} />
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Gender</label>
-                <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} style={inputStyle}>
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Membership Plan</label>
+                  <select
+                    value={form.membership_plan_id}
+                    onChange={(e) => {
+                      const selectedPlan = plans.find((p) => p.id === e.target.value);
+                      const start = form.start_date || new Date().toISOString().slice(0, 10);
+                      let exp = form.expiry_date;
+                      if (selectedPlan && selectedPlan.duration_days) {
+                        const d = new Date(start);
+                        d.setDate(d.getDate() + Number(selectedPlan.duration_days));
+                        exp = d.toISOString().slice(0, 10);
+                      }
+                      setForm({
+                        ...form,
+                        membership_plan_id: e.target.value,
+                        start_date: start,
+                        expiry_date: exp,
+                      });
+                    }}
+                    className={inputClassName}
+                  >
+                    <option value="">Select Membership Plan</option>
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (₹{p.price} - {p.duration_days} days)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    className={inputClassName}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Deactivated</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Date of Birth</label>
-                <input type="date" value={form.dob} onChange={(e) => setForm({ ...form, dob: e.target.value })} style={inputStyle} />
-              </div>
-            </div>
 
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Residential Address</label>
-              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address in Roorkee/Jhabrera" style={inputStyle} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Emergency Contact</label>
-                <input value={form.emergency_contact} onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })} placeholder="Phone / Person" style={inputStyle} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Expiry Date</label>
+                  <input
+                    type="date"
+                    value={form.expiry_date}
+                    onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Assign Plan</label>
-                <select value={form.membership_plan_id} onChange={(e) => setForm({ ...form, membership_plan_id: e.target.value })} style={inputStyle}>
-                  <option value="">Select Plan</option>
-                  {plans.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.price})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Membership Start Date</label>
-                <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} style={inputStyle} />
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Address & Emergency Contact</label>
+                <input
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="Address"
+                  className={`${inputClassName} mb-2`}
+                />
+                <input
+                  value={form.emergency_contact}
+                  onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })}
+                  placeholder="Emergency Contact Phone"
+                  className={inputClassName}
+                />
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Membership Expiry Date</label>
-                <input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} style={inputStyle} />
-              </div>
-            </div>
 
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Notes / Remarks</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes about health goals, injuries, etc." rows={2} style={inputStyle} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-              <button type="submit" style={{ flex: 1, padding: '12px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', fontWeight: 800, cursor: 'pointer' }}>
-                {form.id ? 'Update Member Profile' : 'Save Member'}
-              </button>
-              {form.id && (
-                <button type="button" onClick={() => setForm({ id: '', member_code: '', full_name: '', phone: '', email: '', gender: '', dob: '', address: '', emergency_contact: '', membership_plan_id: '', start_date: '', expiry_date: '', status: 'active', notes: '' })} style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid #d4d4d8', background: '#f4f4f5', cursor: 'pointer' }}>
-                  Cancel
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm transition-colors shadow-lg shadow-red-900/30"
+                >
+                  {form.id ? 'Save Member Profile' : 'Add Gym Member'}
                 </button>
-              )}
-            </div>
-          </form>
-        </Card>
+                {form.id && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        id: '',
+                        member_code: '',
+                        full_name: '',
+                        phone: '',
+                        email: '',
+                        gender: '',
+                        dob: '',
+                        address: '',
+                        emergency_contact: '',
+                        membership_plan_id: '',
+                        start_date: '',
+                        expiry_date: '',
+                        status: 'active',
+                        notes: '',
+                      })
+                    }
+                    className="py-3 px-4 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white font-bold text-sm"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </Card>
+        </div>
       </div>
 
-      {/* Complete Member Profile Modal */}
+      {/* MEMBER PROFILE MODAL OVERLAY */}
       {selectedMember && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 100, padding: 20 }}>
-          <div style={{ maxWidth: 850, width: '100%', maxHeight: '90vh', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: 16, overflowY: 'auto', padding: 28, boxShadow: '0 25px 50px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e4e4e7', paddingBottom: 16, marginBottom: 20 }}>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm grid place-items-center p-4 overflow-y-auto">
+          <div className="max-w-3xl w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-5 sm:p-7 shadow-2xl text-white my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-zinc-800">
               <div>
-                <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>MEMBER PROFILE DETAIL</div>
-                <h2 style={{ margin: '4px 0 0', fontSize: 24, fontWeight: 900, color: '#09090b' }}>
-                  {selectedMember.full_name} <span style={{ fontSize: 14, color: '#71717a', fontWeight: 600 }}>({selectedMember.member_code || 'No Code'})</span>
+                <div className="text-xs font-black tracking-widest text-red-600 uppercase">
+                  MEMBER PROFILE DETAIL
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5">
+                  {selectedMember.full_name}{' '}
+                  <span className="text-sm font-bold text-zinc-400">({selectedMember.member_code || 'No Code'})</span>
                 </h2>
               </div>
-              <button onClick={() => setSelectedMember(null)} style={{ border: 0, background: '#f4f4f5', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, fontWeight: 700 }}>✕</button>
+              <button
+                onClick={() => setSelectedMember(null)}
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center font-bold"
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-              <div style={{ background: '#f8f9fa', padding: 16, borderRadius: 12, border: '1px solid #e4e4e7' }}>
-                <h4 style={{ margin: '0 0 10px', color: '#09090b' }}>Personal Profile</h4>
-                <div style={{ display: 'grid', gap: 6, fontSize: 13, color: '#3f3f46' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-zinc-900/90 p-4 rounded-xl border border-zinc-800">
+                <h4 className="text-sm font-bold text-white mb-2">Personal Information</h4>
+                <div className="space-y-1.5 text-xs text-zinc-300">
                   <div><strong>Phone:</strong> {selectedMember.phone}</div>
                   <div><strong>Email:</strong> {selectedMember.email || '—'}</div>
                   <div><strong>Gender:</strong> {selectedMember.gender || '—'}</div>
                   <div><strong>DOB:</strong> {selectedMember.dob || '—'}</div>
                   <div><strong>Address:</strong> {selectedMember.address || '—'}</div>
-                  <div><strong>Emergency Contact:</strong> {selectedMember.emergency_contact || '—'}</div>
-                  <div><strong>Joined Date:</strong> {selectedMember.created_at?.slice(0, 10) || '—'}</div>
-                  <div><strong>Auth User Linked:</strong> {selectedMember.user_id ? 'Yes (Portal Active)' : 'No'}</div>
+                  <div><strong>Emergency:</strong> {selectedMember.emergency_contact || '—'}</div>
+                  <div><strong>Portal User Linked:</strong> {selectedMember.user_id ? 'Yes (Active)' : 'No'}</div>
                 </div>
               </div>
 
-              <div style={{ background: '#f8f9fa', padding: 16, borderRadius: 12, border: '1px solid #e4e4e7' }}>
-                <h4 style={{ margin: '0 0 10px', color: '#09090b' }}>Current Membership Status</h4>
+              <div className="bg-zinc-900/90 p-4 rounded-xl border border-zinc-800">
+                <h4 className="text-sm font-bold text-white mb-2">Membership Status</h4>
                 {(() => {
                   const statusMeta = getCalculatedStatus(selectedMember.expiry_date, selectedMember.status);
                   return (
-                    <div style={{ display: 'grid', gap: 6, fontSize: 13, color: '#3f3f46' }}>
-                      <div><strong>Current Plan:</strong> {selectedMember.membership_plans?.name || 'Unassigned'}</div>
+                    <div className="space-y-1.5 text-xs text-zinc-300">
+                      <div><strong>Plan:</strong> {selectedMember.membership_plans?.name || 'Unassigned'}</div>
                       <div><strong>Start Date:</strong> {selectedMember.start_date || '—'}</div>
                       <div><strong>Expiry Date:</strong> {selectedMember.expiry_date || '—'}</div>
                       <div>
                         <strong>Calculated Status:</strong>{' '}
-                        <span style={{ color: statusMeta.color, fontWeight: 800 }}>{statusMeta.label}</span>
+                        <span style={{ color: statusMeta.color }} className="font-extrabold">
+                          {statusMeta.label}
+                        </span>
                       </div>
                       {typeof statusMeta.diffDays === 'number' && (
-                        <div><strong>Days Remaining:</strong> {statusMeta.diffDays < 0 ? `Expired ${Math.abs(statusMeta.diffDays)} days ago` : `${statusMeta.diffDays} days`}</div>
+                        <div>
+                          <strong>Days Remaining:</strong>{' '}
+                          {statusMeta.diffDays < 0
+                            ? `Expired ${Math.abs(statusMeta.diffDays)} days ago`
+                            : `${statusMeta.diffDays} days`}
+                        </div>
                       )}
-                      <div><strong>Notes:</strong> {selectedMember.notes || 'None'}</div>
                     </div>
                   );
                 })()}
               </div>
             </div>
 
-            {/* Sub-tabs: Payments & Attendance */}
-            <div style={{ display: 'grid', gap: 20 }}>
+            <div className="space-y-4 mb-6">
               <div>
-                <h4 style={{ margin: '0 0 10px', color: '#09090b' }}>Payment History ({memberPayments.length})</h4>
+                <h4 className="text-sm font-bold text-white mb-2">Payment Log ({memberPayments.length})</h4>
                 {memberPayments.length > 0 ? (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: '#f4f4f5', textAlign: 'left' }}>
-                        <th style={{ padding: 8, border: '1px solid #e4e4e7' }}>Date</th>
-                        <th style={{ padding: 8, border: '1px solid #e4e4e7' }}>Amount</th>
-                        <th style={{ padding: 8, border: '1px solid #e4e4e7' }}>Method</th>
-                        <th style={{ padding: 8, border: '1px solid #e4e4e7' }}>Plan / Reference</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {memberPayments.map((p) => (
-                        <tr key={p.id}>
-                          <td style={{ padding: 8, border: '1px solid #e4e4e7' }}>{p.payment_date}</td>
-                          <td style={{ padding: 8, border: '1px solid #e4e4e7', fontWeight: 700, color: '#10b981' }}>{formatINR(Number(p.amount))}</td>
-                          <td style={{ padding: 8, border: '1px solid #e4e4e7' }}>{p.payment_method.toUpperCase()}</td>
-                          <td style={{ padding: 8, border: '1px solid #e4e4e7' }}>{p.membership_plans?.name || p.reference || 'General payment'}</td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse min-w-[500px]">
+                      <thead>
+                        <tr className="bg-zinc-900 text-zinc-400 border-b border-zinc-800">
+                          <th className="p-2">Date</th>
+                          <th className="p-2">Amount</th>
+                          <th className="p-2">Method</th>
+                          <th className="p-2">Plan / Reference</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/60">
+                        {memberPayments.map((p) => (
+                          <tr key={p.id}>
+                            <td className="p-2 text-zinc-300">{p.payment_date}</td>
+                            <td className="p-2 font-bold text-emerald-400">{formatINR(Number(p.amount))}</td>
+                            <td className="p-2 text-zinc-300">{p.payment_method.toUpperCase()}</td>
+                            <td className="p-2 text-zinc-400">{p.membership_plans?.name || p.reference || 'General'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <div style={{ fontSize: 13, color: '#71717a' }}>No payment records found for this member.</div>
+                  <div className="text-xs text-zinc-500 py-2">No payment records found.</div>
                 )}
               </div>
 
               <div>
-                <h4 style={{ margin: '0 0 10px', color: '#09090b' }}>Attendance Log ({memberAttendance.length} visits)</h4>
+                <h4 className="text-sm font-bold text-white mb-2">Attendance Visits ({memberAttendance.length})</h4>
                 {memberAttendance.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
-                    {memberAttendance.slice(0, 20).map((a) => (
-                      <div key={a.id} style={{ padding: '8px 10px', border: '1px solid #e4e4e7', borderRadius: 8, background: '#ffffff', fontSize: 12 }}>
-                        <strong>{a.attendance_date}</strong>
-                        <div style={{ color: '#71717a' }}>In: {a.entry_time || '—'}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                    {memberAttendance.slice(0, 15).map((a) => (
+                      <div key={a.id} className="p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs">
+                        <div className="font-bold text-white">{a.attendance_date}</div>
+                        <div className="text-zinc-400 text-[11px]">In: {a.entry_time || '—'}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 13, color: '#71717a' }}>No attendance logged for this member yet.</div>
+                  <div className="text-xs text-zinc-500 py-2">No attendance logged yet.</div>
                 )}
               </div>
             </div>
 
-            {/* Modal Quick Actions */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 24, paddingTop: 16, borderTop: '1px solid #e4e4e7' }}>
-              <button type="button" onClick={() => handleEdit(selectedMember)} style={{ padding: '10px 16px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
-                Edit Details
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-2.5 pt-4 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => handleEdit(selectedMember)}
+                className="py-2 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+              >
+                Edit Profile
               </button>
-              <button type="button" onClick={() => handleToggleDeactivate(selectedMember)} style={{ padding: '10px 16px', background: selectedMember.status === 'inactive' ? '#10b981' : '#ef4444', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
-                {selectedMember.status === 'inactive' ? 'Reactivate Member' : 'Deactivate Member'}
+              <button
+                type="button"
+                onClick={() => handleToggleDeactivate(selectedMember)}
+                className={`py-2 px-4 rounded-xl font-bold text-xs text-white ${
+                  selectedMember.status === 'inactive' || selectedMember.status === 'deactivated'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-zinc-800 border border-zinc-700 hover:bg-zinc-700'
+                }`}
+              >
+                {selectedMember.status === 'inactive' || selectedMember.status === 'deactivated'
+                  ? 'Reactivate Member'
+                  : 'Deactivate Member'}
               </button>
               {!selectedMember.user_id ? (
-                <button type="button" onClick={() => { setPortalPassword(''); setPortalMsg(null); setPortalModal({ type: 'create', member: selectedMember }); }} style={{ padding: '10px 16px', background: '#2563eb', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPortalPassword('');
+                    setPortalMsg(null);
+                    setPortalModal({ type: 'create', member: selectedMember });
+                  }}
+                  className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
+                >
                   Create Portal Credentials
                 </button>
               ) : (
-                <button type="button" onClick={() => { setPortalPassword(''); setPortalMsg(null); setPortalModal({ type: 'reset', member: selectedMember }); }} style={{ padding: '10px 16px', background: '#4b5563', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPortalPassword('');
+                    setPortalMsg(null);
+                    setPortalModal({ type: 'reset', member: selectedMember });
+                  }}
+                  className="py-2 px-4 rounded-xl bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 font-bold text-xs"
+                >
                   Reset Portal Password
                 </button>
               )}
@@ -828,36 +1041,49 @@ export function MembersPage() {
         </div>
       )}
 
-      {/* Portal Account Modal Overlay */}
+      {/* PORTAL ACCOUNT MODAL OVERLAY */}
       {portalModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 120, padding: 20 }}>
-          <div style={{ maxWidth: 440, width: '100%', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: 16, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800, color: '#09090b' }}>
-              {portalModal.type === 'create' ? 'Create Member Credentials' : 'Reset Member Portal Password'}
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm grid place-items-center p-4">
+          <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-2xl text-white">
+            <h3 className="text-lg font-black mb-1">
+              {portalModal.type === 'create' ? 'Create Portal Account' : 'Reset Portal Password'}
             </h3>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#71717a' }}>
-              Member: <strong>{portalModal.member.full_name}</strong> ({portalModal.member.member_code || 'ID'})
+            <p className="text-xs text-zinc-400 mb-4">
+              Member: <strong className="text-white">{portalModal.member.full_name}</strong> ({portalModal.member.member_code || 'ID'})
             </p>
 
             {portalMsg && (
-              <div style={{ padding: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13, marginBottom: 14 }}>
+              <div className="p-3 mb-3 bg-red-950/80 border border-red-800 rounded-xl text-red-300 text-xs">
                 {portalMsg}
               </div>
             )}
 
-            <form onSubmit={handlePortalSubmit} style={{ display: 'grid', gap: 14 }}>
+            <form onSubmit={handlePortalSubmit} className="space-y-3">
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>
-                  {portalModal.type === 'create' ? 'Portal Password *' : 'New Password *'}
-                </label>
-                <input type="password" required value={portalPassword} onChange={(e) => setPortalPassword(e.target.value)} placeholder="Enter password (min 6 characters)" style={inputStyle} />
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Portal Password (min 6 chars)</label>
+                <input
+                  type="password"
+                  required
+                  value={portalPassword}
+                  onChange={(e) => setPortalPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={inputClassName}
+                />
               </div>
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                <button type="submit" disabled={portalLoading} style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 800, cursor: portalLoading ? 'wait' : 'pointer' }}>
-                  {portalLoading ? 'Processing…' : portalModal.type === 'create' ? 'Generate Credentials' : 'Save New Password'}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={portalLoading}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+                >
+                  {portalLoading ? 'Processing…' : 'Save Credentials'}
                 </button>
-                <button type="button" onClick={() => setPortalModal(null)} style={{ padding: '12px 14px', background: '#f4f4f5', border: '1px solid #d4d4d8', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                <button
+                  type="button"
+                  onClick={() => setPortalModal(null)}
+                  className="py-2.5 px-4 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white font-bold text-xs"
+                >
                   Cancel
                 </button>
               </div>
@@ -866,36 +1092,30 @@ export function MembersPage() {
         </div>
       )}
 
-      {/* One-Time Credential Display Card Overlay */}
+      {/* CREATED CREDENTIALS OVERLAY */}
       {createdCredentials && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 130, padding: 20 }}>
-          <div style={{ maxWidth: 450, width: '100%', background: '#121215', border: '2px solid #dc2626', borderRadius: 16, padding: 28, color: '#ffffff', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: '#dc2626', letterSpacing: '0.15em', textTransform: 'uppercase' }}>RR FITNESS MEMBER PORTAL</div>
-              <h3 style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 900, color: '#ffffff' }}>Member Credentials Generated</h3>
-              <p style={{ fontSize: 13, color: '#a1a1aa', margin: '4px 0 0' }}>Provide these login credentials to <strong>{createdCredentials.memberName}</strong></p>
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm grid place-items-center p-4">
+          <div className="max-w-md w-full bg-zinc-950 border-2 border-red-600 rounded-2xl p-6 text-white shadow-2xl">
+            <div className="text-center mb-4">
+              <div className="text-xs font-black text-red-500 uppercase tracking-widest">RR FITNESS MEMBER PORTAL</div>
+              <h3 className="text-xl font-black text-white mt-1">Credentials Generated</h3>
+              <p className="text-xs text-zinc-400 mt-1">
+                Provide these login credentials to <strong>{createdCredentials.memberName}</strong>
+              </p>
             </div>
 
-            <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 12, padding: 18, display: 'grid', gap: 14, marginBottom: 20 }}>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3 mb-5">
               <div>
-                <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Member ID</span>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.05em', marginTop: 2 }}>{createdCredentials.memberCode}</div>
+                <div className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider">Member ID</div>
+                <div className="text-lg font-black text-white tracking-widest">{createdCredentials.memberCode}</div>
               </div>
-
               <div>
-                <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Portal Password</span>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#10b981', letterSpacing: '0.05em', marginTop: 2 }}>{createdCredentials.password}</div>
-              </div>
-
-              <div>
-                <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Portal Login URL</span>
-                <div style={{ fontSize: 13, color: '#fca5a5', fontWeight: 700, marginTop: 2 }}>
-                  {typeof window !== 'undefined' ? `${window.location.origin}/member/login` : '/member/login'}
-                </div>
+                <div className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider">Password</div>
+                <div className="text-lg font-black text-emerald-400 tracking-widest">{createdCredentials.password}</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={async () => {
@@ -905,14 +1125,15 @@ export function MembersPage() {
                   setCopiedCreds(true);
                   setTimeout(() => setCopiedCreds(false), 2000);
                 }}
-                style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 800, cursor: 'pointer' }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
               >
-                {copiedCreds ? '✓ Credentials Copied!' : 'Copy Credentials'}
+                <Copy size={14} />
+                {copiedCreds ? 'Copied!' : 'Copy Credentials'}
               </button>
               <button
                 type="button"
                 onClick={() => setCreatedCredentials(null)}
-                style={{ padding: '12px 18px', background: '#27272a', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+                className="py-2.5 px-4 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white font-bold text-xs"
               >
                 Close
               </button>
@@ -1004,185 +1225,276 @@ export function PaymentsPage() {
     };
 
     if (form.id) {
-      if (!window.confirm('WARNING: Editing an existing payment record may alter member membership dates. Proceed?')) return;
       const { error } = await client.from('payments').update(payload).eq('id', form.id);
       if (error) { setMessage(error.message); return; }
       await writeAuditLog('payment_edited', 'payments', form.id, `Updated payment of ${form.amount}`);
     } else {
       const { error } = await client.from('payments').insert(payload);
       if (error) { setMessage(error.message); return; }
-      await writeAuditLog('payment_created', 'payments', undefined, `Recorded payment of ${form.amount} for member ID ${form.member_id}`);
-
-      // Auto-update member's expiry date and plan if specified
-      if (form.membership_end_date || form.membership_plan_id) {
-        await client.from('members').update({
-          membership_plan_id: form.membership_plan_id || undefined,
-          start_date: form.membership_start_date || undefined,
-          expiry_date: form.membership_end_date || undefined,
-          status: 'active',
-        }).eq('id', form.member_id);
-      }
+      await writeAuditLog('payment_created', 'payments', undefined, `Recorded payment of ${form.amount}`);
     }
 
     await loadData();
-    setForm({ id: '', member_id: '', membership_plan_id: '', amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method: 'cash', membership_start_date: new Date().toISOString().slice(0, 10), membership_end_date: '', reference: '', notes: '' });
-    setMessage('Payment saved successfully.');
-  };
-
-  const handleEdit = (p: Row) => {
     setForm({
-      id: p.id,
-      member_id: p.member_id ?? '',
-      membership_plan_id: p.membership_plan_id ?? '',
-      amount: String(p.amount ?? ''),
-      payment_date: p.payment_date ?? '',
-      payment_method: p.payment_method ?? 'cash',
-      membership_start_date: p.membership_start_date ?? '',
-      membership_end_date: p.membership_end_date ?? '',
-      reference: p.reference ?? '',
-      notes: p.notes ?? '',
+      id: '',
+      member_id: '',
+      membership_plan_id: '',
+      amount: '',
+      payment_date: new Date().toISOString().slice(0, 10),
+      payment_method: 'cash',
+      membership_start_date: new Date().toISOString().slice(0, 10),
+      membership_end_date: '',
+      reference: '',
+      notes: '',
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMessage('Payment record saved.');
   };
 
-  const handleDelete = async (p: Row) => {
-    if (!window.confirm('WARNING: Deleting a payment record cannot be undone. Proceed with caution.')) return;
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this payment transaction record?')) return;
     const client = createBrowserClient();
     if (!client) return;
-    const { error } = await client.from('payments').delete().eq('id', p.id);
+    const { error } = await client.from('payments').delete().eq('id', id);
     if (!error) {
-      await writeAuditLog('payment_deleted', 'payments', p.id, `Deleted payment record of ₹${p.amount}`);
+      await writeAuditLog('payment_deleted', 'payments', id, `Deleted payment record ${id}`);
       await loadData();
-      setMessage('Payment deleted.');
     }
   };
 
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {
-      const matchSearch = `${p.members?.full_name ?? ''} ${p.members?.member_code ?? ''} ${p.reference ?? ''}`.toLowerCase().includes(search.toLowerCase());
-      const matchMethod = !methodFilter || p.payment_method === methodFilter;
-      return matchSearch && matchMethod;
+      const matchesSearch = `${p.members?.full_name ?? ''} ${p.members?.member_code ?? ''} ${p.reference ?? ''}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const matchesMethod = !methodFilter || p.payment_method === methodFilter;
+      return matchesSearch && matchesMethod;
     });
   }, [payments, search, methodFilter]);
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>{message}</div>}
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
-        {/* Payments List */}
-        <Card title={`Payment Transactions (${filteredPayments.length})`}>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#a1a1aa' }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter member name or reference..." style={{ ...inputStyle, paddingLeft: 36 }} />
-            </div>
-            <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)} style={{ ...inputStyle, width: 140 }}>
-              <option value="">All Methods</option>
-              <option value="cash">Cash</option>
-              <option value="upi">UPI</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gap: 10, maxHeight: 600, overflowY: 'auto' }}>
-            {filteredPayments.map((p) => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e4e4e7', borderRadius: 10, background: '#ffffff' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <strong style={{ fontSize: 15, color: '#09090b' }}>{p.members?.full_name || 'Member'}</strong>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: '#f4f4f5', color: '#52525b', fontWeight: 700 }}>
-                      {p.members?.member_code || 'ID'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#71717a', marginTop: 4 }}>
-                    {p.payment_date} • Method: <strong>{p.payment_method.toUpperCase()}</strong> {p.reference ? `(${p.reference})` : ''}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>{formatINR(Number(p.amount))}</div>
-                  <button onClick={() => handleEdit(p)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d4d4d8', background: '#ffffff', cursor: 'pointer' }}><Edit size={14} /></button>
-                  <button onClick={() => handleDelete(p)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={14} /></button>
-                </div>
+      {/* RESPONSIVE LAYOUT GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* PAYMENT RECORDS LIST */}
+        <div className="lg:col-span-7 space-y-4">
+          <Card title={`Payment Records (${filteredPayments.length})`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-3 text-zinc-500" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search member, ID, reference..."
+                  className={`${inputClassName} pl-9`}
+                />
               </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Record Payment Form */}
-        <Card title={form.id ? 'Edit Payment Record' : 'Record Member Payment'}>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Select Member *</label>
-              <select required value={form.member_id} onChange={(e) => setForm({ ...form, member_id: e.target.value })} style={inputStyle}>
-                <option value="">Choose Member</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.full_name} ({m.member_code || 'No Code'})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Membership Plan (Optional)</label>
-              <select value={form.membership_plan_id} onChange={(e) => handlePlanSelect(e.target.value)} style={inputStyle}>
-                <option value="">Select Plan (Autofills Amount & End Date)</option>
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} - {p.price}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Amount (₹) *</label>
-                <input required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="1500" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Payment Date *</label>
-                <input type="date" required value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} style={inputStyle} />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Payment Method *</label>
-              <select value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} style={inputStyle}>
+              <select
+                value={methodFilter}
+                onChange={(e) => setMethodFilter(e.target.value)}
+                className={inputClassName}
+              >
+                <option value="">All Payment Methods</option>
                 <option value="cash">Cash</option>
-                <option value="upi">UPI / GPay / PhonePe</option>
+                <option value="upi">UPI</option>
                 <option value="bank_transfer">Bank Transfer</option>
+                <option value="razorpay">Razorpay / Online</option>
                 <option value="other">Other</option>
               </select>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* MOBILE VIEW CARDS */}
+            <div className="block md:hidden space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {filteredPayments.map((p) => (
+                <div key={p.id} className="p-3.5 bg-zinc-950/80 border border-zinc-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-extrabold text-white text-sm">{p.members?.full_name || 'Member'}</div>
+                      <div className="text-[11px] text-zinc-400">{p.members?.member_code || 'No ID'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-extrabold text-emerald-400 text-base">{formatINR(Number(p.amount))}</div>
+                      <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                        {p.payment_method}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-zinc-400 flex items-center justify-between pt-1 border-t border-zinc-800">
+                    <span>Date: {p.payment_date}</span>
+                    <span>Plan: {p.membership_plans?.name || 'General'}</span>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      className="text-red-400 hover:text-red-300 font-bold ml-2"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* DESKTOP VIEW TABLE */}
+            <div className="hidden md:block overflow-x-auto max-h-[600px]">
+              <table className="w-full text-xs text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-zinc-950 text-zinc-400 border-b border-zinc-800">
+                    <th className="p-2.5">Member</th>
+                    <th className="p-2.5">Amount</th>
+                    <th className="p-2.5">Date</th>
+                    <th className="p-2.5">Method</th>
+                    <th className="p-2.5">Plan</th>
+                    <th className="p-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                  {filteredPayments.map((p) => (
+                    <tr key={p.id} className="hover:bg-zinc-950/50">
+                      <td className="p-2.5">
+                        <div className="font-bold text-white">{p.members?.full_name}</div>
+                        <div className="text-zinc-500 text-[11px]">{p.members?.member_code}</div>
+                      </td>
+                      <td className="p-2.5 font-extrabold text-emerald-400">{formatINR(Number(p.amount))}</td>
+                      <td className="p-2.5 text-zinc-300">{p.payment_date}</td>
+                      <td className="p-2.5 uppercase font-bold text-zinc-300">{p.payment_method}</td>
+                      <td className="p-2.5 text-zinc-400">{p.membership_plans?.name || 'General'}</td>
+                      <td className="p-2.5 text-right">
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-950/50 rounded"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+
+        {/* RECORD PAYMENT FORM */}
+        <div className="lg:col-span-5 space-y-4">
+          <Card title="Record Payment Transaction">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Membership Start Date</label>
-                <input type="date" value={form.membership_start_date} onChange={(e) => setForm({ ...form, membership_start_date: e.target.value })} style={inputStyle} />
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Select Member *</label>
+                <select
+                  required
+                  value={form.member_id}
+                  onChange={(e) => setForm({ ...form, member_id: e.target.value })}
+                  className={inputClassName}
+                >
+                  <option value="">Choose Member</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.full_name} ({m.member_code || m.phone})
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Membership Plan</label>
+                  <select
+                    value={form.membership_plan_id}
+                    onChange={(e) => handlePlanSelect(e.target.value)}
+                    className={inputClassName}
+                  >
+                    <option value="">Choose Plan (Optional)</option>
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (₹{p.price})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                    placeholder="e.g. 800"
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Payment Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={form.payment_date}
+                    onChange={(e) => setForm({ ...form, payment_date: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Payment Method</label>
+                  <select
+                    value={form.payment_method}
+                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                    className={inputClassName}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="razorpay">Razorpay / Online</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Membership Start</label>
+                  <input
+                    type="date"
+                    value={form.membership_start_date}
+                    onChange={(e) => setForm({ ...form, membership_start_date: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Membership End</label>
+                  <input
+                    type="date"
+                    value={form.membership_end_date}
+                    onChange={(e) => setForm({ ...form, membership_end_date: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Membership Expiry Date</label>
-                <input type="date" value={form.membership_end_date} onChange={(e) => setForm({ ...form, membership_end_date: e.target.value })} style={inputStyle} />
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Reference / Transaction ID</label>
+                <input
+                  value={form.reference}
+                  onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                  placeholder="UPI Ref ID or Cheque No."
+                  className={inputClassName}
+                />
               </div>
-            </div>
 
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Transaction Ref / UPI ID</label>
-              <input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="UPI reference or receipt no" style={inputStyle} />
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Notes</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Optional payment notes" style={inputStyle} />
-            </div>
-
-            <button type="submit" style={{ padding: '12px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', fontWeight: 800, cursor: 'pointer', marginTop: 6 }}>
-              {form.id ? 'Update Payment' : 'Save Payment'}
-            </button>
-          </form>
-        </Card>
+              <button
+                type="submit"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm transition-colors shadow-lg shadow-red-900/30"
+              >
+                Record Payment
+              </button>
+            </form>
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -1195,148 +1507,111 @@ export function AttendancePage() {
   const [attendance, setAttendance] = useState<Row[]>([]);
   const [members, setMembers] = useState<Row[]>([]);
   const [search, setSearch] = useState('');
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    member_id: '',
-    attendance_date: new Date().toISOString().slice(0, 10),
-    entry_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-    exit_time: '',
-    source: 'manual',
-    device_user_id: '',
-  });
 
   const loadData = async () => {
     const client = createBrowserClient();
     if (!client) return;
-    const [{ data: attData }, { data: membersData }] = await Promise.all([
-      client.from('attendance').select('*, members(full_name, member_code)').order('attendance_date', { ascending: false }).limit(50),
-      client.from('members').select('id, full_name, member_code, status').eq('status', 'active').order('created_at', { ascending: false }),
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const [{ data: attData }, { data: memData }] = await Promise.all([
+      client.from('attendance').select('*, members(full_name, member_code)').eq('attendance_date', todayStr).order('created_at', { ascending: false }),
+      client.from('members').select('id, full_name, member_code, phone').eq('status', 'active'),
     ]);
     setAttendance(attData ?? []);
-    setMembers(membersData ?? []);
+    setMembers(memData ?? []);
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCheckIn = async (memberId: string) => {
     const client = createBrowserClient();
     if (!client) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const nowTimeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
 
-    if (!form.member_id) {
-      setMessage('Please select a member.');
-      return;
+    const { error } = await client.from('attendance').insert({
+      member_id: memberId,
+      attendance_date: todayStr,
+      entry_time: nowTimeStr,
+      source: 'manual',
+    });
+
+    if (!error) {
+      setMessage('Attendance checked in successfully.');
+      setSelectedMemberId('');
+      await loadData();
+    } else {
+      setMessage(error.message);
     }
-
-    const payload = {
-      member_id: form.member_id,
-      attendance_date: form.attendance_date || new Date().toISOString().slice(0, 10),
-      entry_time: form.entry_time || null,
-      exit_time: form.exit_time || null,
-      source: form.source || 'manual',
-      device_user_id: form.device_user_id || null,
-    };
-
-    const { error } = await client.from('attendance').insert(payload);
-    if (error) { setMessage(error.message); return; }
-
-    await loadData();
-    setForm({ member_id: '', attendance_date: new Date().toISOString().slice(0, 10), entry_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }), exit_time: '', source: 'manual', device_user_id: '' });
-    setMessage('Attendance check-in logged.');
   };
 
-  const filteredAttendance = useMemo(() => {
-    return attendance.filter((a) => {
-      const matchSearch = `${a.members?.full_name ?? ''} ${a.members?.member_code ?? ''}`.toLowerCase().includes(search.toLowerCase());
-      const matchDate = !filterDate || a.attendance_date === filterDate;
-      return matchSearch && matchDate;
-    });
-  }, [attendance, search, filterDate]);
-
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>{message}</div>}
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
-        <Card title={`Attendance Logs (${filteredAttendance.length})`}>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#a1a1aa' }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search member name or Member ID..." style={{ ...inputStyle, paddingLeft: 36 }} />
-            </div>
-            <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ ...inputStyle, width: 150 }} />
-          </div>
-
-          <div style={{ display: 'grid', gap: 10, maxHeight: 550, overflowY: 'auto' }}>
-            {filteredAttendance.map((a) => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e4e4e7', borderRadius: 10, background: '#ffffff' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <strong style={{ fontSize: 15, color: '#09090b' }}>{a.members?.full_name || 'Member'}</strong>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: '#f4f4f5', color: '#52525b', fontWeight: 700 }}>
-                      {a.members?.member_code || 'ID'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#71717a', marginTop: 4 }}>
-                    Date: <strong>{a.attendance_date}</strong> • Entry Source: <strong>{a.source || 'manual'}</strong>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right', fontSize: 13, color: '#09090b', fontWeight: 600 }}>
-                  <div>In: {a.entry_time || '—'}</div>
-                  <div style={{ fontSize: 11, color: '#71717a' }}>Out: {a.exit_time || '—'}</div>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5 space-y-4">
+          <Card title="Quick Member Check-in">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Search & Select Active Member</label>
+                <select
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  className={inputClassName}
+                >
+                  <option value="">Select Member for Check-in</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.full_name} ({m.member_code || m.phone})
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
-          </div>
-        </Card>
 
-        {/* Record Attendance Form */}
-        <Card title="Check-In Member Attendance">
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Select Active Member *</label>
-              <select required value={form.member_id} onChange={(e) => setForm({ ...form, member_id: e.target.value })} style={inputStyle}>
-                <option value="">Select Member</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>{m.full_name} ({m.member_code || 'No ID'})</option>
+              <button
+                disabled={!selectedMemberId}
+                onClick={() => selectedMemberId && handleCheckIn(selectedMemberId)}
+                className={`w-full py-3.5 px-4 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 ${
+                  selectedMemberId
+                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30'
+                    : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                }`}
+              >
+                <UserCheck size={18} /> Mark Today's Check-in
+              </button>
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-7 space-y-4">
+          <Card title={`Today's Attendance Logs (${attendance.length})`}>
+            {attendance.length > 0 ? (
+              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {attendance.map((a) => (
+                  <div key={a.id} className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="font-extrabold text-white text-sm">{a.members?.full_name || 'Member'}</div>
+                      <div className="text-xs text-zinc-400">{a.members?.member_code} • Source: {a.source || 'manual'}</div>
+                    </div>
+                    <div className="text-right text-xs">
+                      <div className="font-bold text-emerald-400">In: {a.entry_time || '—'}</div>
+                    </div>
+                  </div>
                 ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Attendance Date *</label>
-              <input type="date" required value={form.attendance_date} onChange={(e) => setForm({ ...form, attendance_date: e.target.value })} style={inputStyle} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Check-In Time</label>
-                <input type="time" value={form.entry_time} onChange={(e) => setForm({ ...form, entry_time: e.target.value })} style={inputStyle} />
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Check-Out Time</label>
-                <input type="time" value={form.exit_time} onChange={(e) => setForm({ ...form, exit_time: e.target.value })} style={inputStyle} />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Entry Source</label>
-              <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} style={inputStyle}>
-                <option value="manual">Manual Check-In</option>
-                <option value="essl_x990">eSSL X990 Biometric Device</option>
-              </select>
-            </div>
-
-            <button type="submit" style={{ padding: '12px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', fontWeight: 800, cursor: 'pointer', marginTop: 6 }}>
-              Log Attendance
-            </button>
-          </form>
-        </Card>
+            ) : (
+              <div className="py-8 text-center text-zinc-500 text-sm">No members checked in yet today.</div>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -1347,8 +1622,6 @@ export function AttendancePage() {
 // ----------------------------------------------------
 export function ExpensesPage() {
   const [expenses, setExpenses] = useState<Row[]>([]);
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
   const [message, setMessage] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -1360,8 +1633,6 @@ export function ExpensesPage() {
     payment_method: 'cash',
     notes: '',
   });
-
-  const categories = ['Electricity', 'Rent', 'Equipment', 'Maintenance', 'Staff', 'Cleaning', 'Marketing', 'Other'];
 
   const loadData = async () => {
     const client = createBrowserClient();
@@ -1389,138 +1660,558 @@ export function ExpensesPage() {
     };
 
     if (form.id) {
-      const { error } = await client.from('expenses').update(payload).eq('id', form.id);
-      if (error) { setMessage(error.message); return; }
-      await writeAuditLog('expense_edited', 'expenses', form.id, `Updated expense ${form.title}`);
+      await client.from('expenses').update(payload).eq('id', form.id);
     } else {
-      const { error } = await client.from('expenses').insert(payload);
-      if (error) { setMessage(error.message); return; }
-      await writeAuditLog('expense_created', 'expenses', undefined, `Created expense ${form.title} of ₹${form.amount}`);
+      await client.from('expenses').insert(payload);
     }
 
     await loadData();
-    setForm({ id: '', title: '', category: 'Electricity', amount: '', expense_date: new Date().toISOString().slice(0, 10), payment_method: 'cash', notes: '' });
+    setForm({
+      id: '',
+      title: '',
+      category: 'Electricity',
+      amount: '',
+      expense_date: new Date().toISOString().slice(0, 10),
+      payment_method: 'cash',
+      notes: '',
+    });
     setMessage('Expense saved.');
   };
 
-  const handleEdit = (ex: Row) => {
-    setForm({
-      id: ex.id,
-      title: ex.title ?? '',
-      category: ex.category ?? 'Electricity',
-      amount: String(ex.amount ?? ''),
-      expense_date: ex.expense_date ?? '',
-      payment_method: ex.payment_method ?? 'cash',
-      notes: ex.notes ?? '',
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete expense entry?')) return;
+    const client = createBrowserClient();
+    if (!client) return;
+    await client.from('expenses').delete().eq('id', id);
+    await loadData();
   };
 
-  const handleDelete = async (ex: Row) => {
-    if (!window.confirm(`Delete expense "${ex.title}"?`)) return;
+  return (
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 space-y-4">
+          <Card title={`Gym Expenses (${expenses.length})`}>
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {expenses.map((e) => (
+                <div key={e.id} className="p-3.5 bg-zinc-950/80 border border-zinc-800 rounded-xl flex items-center justify-between">
+                  <div>
+                    <div className="font-extrabold text-white text-sm">{e.title}</div>
+                    <div className="text-xs text-zinc-400">
+                      {e.expense_date} • <span className="text-red-400 font-bold">{e.category}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="font-extrabold text-red-400 text-base">{formatINR(Number(e.amount))}</div>
+                    <button onClick={() => handleDelete(e.id)} className="text-zinc-500 hover:text-red-400">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-5 space-y-4">
+          <Card title="Add Gym Expense">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Expense Title *</label>
+                <input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="e.g. Electricity Bill"
+                  className={inputClassName}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className={inputClassName}
+                  >
+                    <option value="Electricity">Electricity</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Equipment">Equipment</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Cleaning">Cleaning</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                    placeholder="Amount"
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={form.expense_date}
+                    onChange={(e) => setForm({ ...form, expense_date: e.target.value })}
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Payment Method</label>
+                  <select
+                    value={form.payment_method}
+                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                    className={inputClassName}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm transition-colors shadow-lg shadow-red-900/30"
+              >
+                Record Expense
+              </button>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------
+// 6. REPORTS PAGE
+// ----------------------------------------------------
+export function ReportsPage() {
+  const [payments, setPayments] = useState<Row[]>([]);
+  const [expenses, setExpenses] = useState<Row[]>([]);
+
+  useEffect(() => {
+    const client = createBrowserClient();
+    if (!client) return;
+    Promise.all([
+      client.from('payments').select('amount, payment_date'),
+      client.from('expenses').select('amount, expense_date'),
+    ]).then(([{ data: pData }, { data: eData }]) => {
+      setPayments(pData ?? []);
+      setExpenses(eData ?? []);
+    });
+  }, []);
+
+  const totalRev = payments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  const totalExp = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+  const netProfit = totalRev - totalExp;
+
+  const downloadCSV = () => {
+    const csvRows = ['Type,Amount,Date'];
+    payments.forEach((p) => csvRows.push(`Revenue,${p.amount},${p.payment_date}`));
+    expenses.forEach((e) => csvRows.push(`Expense,${e.amount},${e.expense_date}`));
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rr_fitness_financial_report_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard title="Lifetime Revenue" value={formatINR(totalRev)} icon={<DollarSign size={18} />} color="#10b981" />
+        <StatCard title="Lifetime Expenses" value={formatINR(totalExp)} icon={<TrendingDown size={18} />} color="#ef4444" />
+        <StatCard title="Lifetime Net Profit" value={formatINR(netProfit)} icon={<TrendingUp size={18} />} color={netProfit >= 0 ? '#10b981' : '#ef4444'} />
+      </div>
+
+      <Card title="Financial Analytics Summary">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-zinc-400 m-0">
+            Export all financial transaction history (revenue and expense line items) in CSV spreadsheet format for accountant auditing.
+          </p>
+          <button
+            onClick={downloadCSV}
+            className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shrink-0"
+          >
+            <Download size={16} /> Download CSV Report
+          </button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ----------------------------------------------------
+// 7. PLANS PAGE
+// ----------------------------------------------------
+export function PlansPage() {
+  const [plans, setPlans] = useState<Row[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    id: '',
+    name: '',
+    description: '',
+    price: '',
+    duration_days: '30',
+    is_active: true,
+  });
+
+  const loadData = async () => {
+    const client = createBrowserClient();
+    if (!client) return;
+    const { data } = await client.from('membership_plans').select('*').order('display_order', { ascending: true });
+    setPlans(data ?? []);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const client = createBrowserClient();
     if (!client) return;
 
-    const { error } = await client.from('expenses').delete().eq('id', ex.id);
-    if (!error) {
-      await writeAuditLog('expense_deleted', 'expenses', ex.id, `Deleted expense "${ex.title}"`);
-      await loadData();
-      setMessage('Expense record deleted.');
+    const payload = {
+      name: form.name,
+      description: form.description || null,
+      price: form.price,
+      duration_days: Number(form.duration_days),
+      is_active: form.is_active,
+    };
+
+    if (form.id) {
+      await client.from('membership_plans').update(payload).eq('id', form.id);
+    } else {
+      await client.from('membership_plans').insert(payload);
     }
+
+    await loadData();
+    setForm({ id: '', name: '', description: '', price: '', duration_days: '30', is_active: true });
+    setMessage('Membership plan saved.');
   };
 
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((ex) => {
-      const matchSearch = (ex.title ?? '').toLowerCase().includes(search.toLowerCase());
-      const matchCat = !categoryFilter || ex.category === categoryFilter;
-      return matchSearch && matchCat;
-    });
-  }, [expenses, search, categoryFilter]);
-
-  const totalExpenseSum = useMemo(() => {
-    return filteredExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
-  }, [filteredExpenses]);
+  const handleToggleActive = async (plan: Row) => {
+    const client = createBrowserClient();
+    if (!client) return;
+    await client.from('membership_plans').update({ is_active: !plan.is_active }).eq('id', plan.id);
+    await loadData();
+  };
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>{message}</div>}
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
-        <Card title={`Gym Expenses (${filteredExpenses.length})`} action={<span style={{ fontWeight: 800, color: '#ef4444' }}>Total: {formatINR(totalExpenseSum)}</span>}>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#a1a1aa' }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter expense title..." style={{ ...inputStyle, paddingLeft: 36 }} />
-            </div>
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ ...inputStyle, width: 150 }}>
-              <option value="">All Categories</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 space-y-4">
+          <Card title={`Active Gym Plans (${plans.length})`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {plans.map((p) => (
+                <div key={p.id} className="p-4 bg-zinc-950/80 border border-zinc-800 rounded-xl flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-white text-base">{p.name}</span>
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                          p.is_active ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-zinc-800 text-zinc-500'
+                        }`}
+                      >
+                        {p.is_active ? 'ACTIVE' : 'INACTIVE'}
+                      </span>
+                    </div>
+                    <div className="text-xl font-black text-red-500 mt-2">₹{p.price}</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">{p.duration_days} Days validity</div>
+                    {p.description && <div className="text-xs text-zinc-500 mt-2">{p.description}</div>}
+                  </div>
 
-          <div style={{ display: 'grid', gap: 10, maxHeight: 550, overflowY: 'auto' }}>
-            {filteredExpenses.map((ex) => (
-              <div key={ex.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e4e4e7', borderRadius: 10, background: '#ffffff' }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: '#09090b' }}>{ex.title}</div>
-                  <div style={{ fontSize: 12, color: '#71717a', marginTop: 4 }}>
-                    {ex.expense_date} • Category: <strong>{ex.category}</strong> • Paid via {ex.payment_method.toUpperCase()}
+                  <div className="pt-2 border-t border-zinc-800 flex gap-2">
+                    <button
+                      onClick={() =>
+                        setForm({
+                          id: p.id,
+                          name: p.name,
+                          description: p.description || '',
+                          price: p.price,
+                          duration_days: String(p.duration_days),
+                          is_active: p.is_active,
+                        })
+                      }
+                      className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(p)}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-bold ${
+                        p.is_active ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                      }`}
+                    >
+                      {p.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          </Card>
+        </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ fontWeight: 900, color: '#ef4444', fontSize: 15 }}>{formatINR(Number(ex.amount))}</div>
-                  <button onClick={() => handleEdit(ex)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d4d4d8', background: '#ffffff', cursor: 'pointer' }}><Edit size={14} /></button>
-                  <button onClick={() => handleDelete(ex)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={14} /></button>
+        <div className="lg:col-span-5 space-y-4">
+          <Card title={form.id ? 'Edit Membership Plan' : 'Create New Membership Plan'}>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Plan Name *</label>
+                <input
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Monthly General"
+                  className={inputClassName}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Price (₹) *</label>
+                  <input
+                    required
+                    value={form.price}
+                    onChange={(e) => setForm({ ...form, price: e.target.value })}
+                    placeholder="800"
+                    className={inputClassName}
+                  />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">Duration (Days) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={form.duration_days}
+                    onChange={(e) => setForm({ ...form, duration_days: e.target.value })}
+                    placeholder="30"
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Description / Features</label>
+                <textarea
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Full gym equipment access, cardio zone..."
+                  className={inputClassName}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm transition-colors shadow-lg shadow-red-900/30"
+              >
+                Save Plan
+              </button>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------
+// 8. ANNOUNCEMENTS PAGE
+// ----------------------------------------------------
+export function AnnouncementsPage() {
+  const [announcements, setAnnouncements] = useState<Row[]>([]);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+
+  const loadData = async () => {
+    const client = createBrowserClient();
+    if (!client) return;
+    const { data } = await client.from('announcements').select('*').order('created_at', { ascending: false });
+    setAnnouncements(data ?? []);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const client = createBrowserClient();
+    if (!client) return;
+    await client.from('announcements').insert({ title, content, is_active: true });
+    await loadData();
+    setTitle('');
+    setContent('');
+    setMessage('Announcement published.');
+  };
+
+  const handleDelete = async (id: string) => {
+    const client = createBrowserClient();
+    if (!client) return;
+    await client.from('announcements').delete().eq('id', id);
+    await loadData();
+  };
+
+  return (
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 space-y-4">
+          <Card title="Active Announcements">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {announcements.map((a) => (
+                <div key={a.id} className="p-3.5 bg-zinc-950/80 border border-zinc-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-white text-sm m-0">{a.title}</h4>
+                    <button onClick={() => handleDelete(a.id)} className="text-zinc-500 hover:text-red-400">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-zinc-300 m-0 leading-relaxed">{a.content}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-5 space-y-4">
+          <Card title="Post Gym Announcement">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Title *</label>
+                <input
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Gym Holiday Timings"
+                  className={inputClassName}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Content Notice *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Details regarding holiday hours..."
+                  className={inputClassName}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm transition-colors shadow-lg shadow-red-900/30"
+              >
+                Publish Notice
+              </button>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------
+// 9. CONTENT PAGE
+// ----------------------------------------------------
+export function ContentPage() {
+  const [contents, setContents] = useState<Row[]>([]);
+  const [key, setKey] = useState('hero_title');
+  const [value, setValue] = useState('');
+
+  useEffect(() => {
+    const client = createBrowserClient();
+    if (!client) return;
+    client.from('website_content').select('*').then(({ data }) => setContents(data ?? []));
+  }, []);
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const client = createBrowserClient();
+    if (!client) return;
+    await client.from('website_content').upsert({ page: 'home', content_key: key, content_value: value });
+    const { data } = await client.from('website_content').select('*');
+    setContents(data ?? []);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="lg:col-span-7 space-y-4">
+        <Card title="Public Website Content Entries">
+          <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+            {contents.map((c) => (
+              <div key={c.id} className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                <div className="font-bold text-red-400 text-xs">{c.content_key}</div>
+                <div className="text-xs text-zinc-300 mt-1">{c.content_value}</div>
               </div>
             ))}
           </div>
         </Card>
+      </div>
 
-        {/* Record Expense Form */}
-        <Card title={form.id ? 'Edit Gym Expense' : 'Add Gym Expense'}>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
+      <div className="lg:col-span-5 space-y-4">
+        <Card title="Update Website Content">
+          <form onSubmit={handleSave} className="space-y-3">
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Expense Title *</label>
-              <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. July Electricity Bill" style={inputStyle} />
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Expense Category *</label>
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={inputStyle}>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              <label className="block text-xs font-bold text-zinc-300 mb-1">Content Key</label>
+              <select value={key} onChange={(e) => setKey(e.target.value)} className={inputClassName}>
+                <option value="hero_title">Hero Headline</option>
+                <option value="hero_subtitle">Hero Subtitle</option>
+                <option value="about_text">About RR Fitness Text</option>
               </select>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Amount (₹) *</label>
-                <input required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="2500" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Expense Date *</label>
-                <input type="date" required value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} style={inputStyle} />
-              </div>
-            </div>
-
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Payment Method</label>
-              <select value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} style={inputStyle}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="other">Other</option>
-              </select>
+              <label className="block text-xs font-bold text-zinc-300 mb-1">Content Text</label>
+              <textarea
+                rows={4}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="Enter content..."
+                className={inputClassName}
+              />
             </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#3f3f46' }}>Notes / Vendor Details</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Vendor name, invoice number, etc." style={inputStyle} />
-            </div>
-
-            <button type="submit" style={{ padding: '12px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', fontWeight: 800, cursor: 'pointer', marginTop: 6 }}>
-              {form.id ? 'Update Expense' : 'Save Expense'}
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm"
+            >
+              Save Website Content
             </button>
           </form>
         </Card>
@@ -1530,589 +2221,8 @@ export function ExpensesPage() {
 }
 
 // ----------------------------------------------------
-// 6. REPORTS & CSV EXPORT PAGE
+// 10. GALLERY PAGE
 // ----------------------------------------------------
-export function ReportsPage() {
-  const [reportType, setReportType] = useState<'members' | 'payments' | 'expenses' | 'pnl' | 'attendance'>('pnl');
-  const [members, setMembers] = useState<Row[]>([]);
-  const [payments, setPayments] = useState<Row[]>([]);
-  const [expenses, setExpenses] = useState<Row[]>([]);
-  const [attendance, setAttendance] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const client = createBrowserClient();
-    if (!client) return;
-
-    const loadAll = async () => {
-      const [
-        { data: m },
-        { data: p },
-        { data: e },
-        { data: a },
-      ] = await Promise.all([
-        client.from('members').select('*, membership_plans(name)'),
-        client.from('payments').select('*, members(full_name, member_code)'),
-        client.from('expenses').select('*'),
-        client.from('attendance').select('*, members(full_name, member_code)'),
-      ]);
-      setMembers(m ?? []);
-      setPayments(p ?? []);
-      setExpenses(e ?? []);
-      setAttendance(a ?? []);
-      setLoading(false);
-    };
-
-    loadAll();
-  }, []);
-
-  const totalRevenue = useMemo(() => payments.reduce((acc, item) => acc + Number(item.amount || 0), 0), [payments]);
-  const totalExpenses = useMemo(() => expenses.reduce((acc, item) => acc + Number(item.amount || 0), 0), [expenses]);
-  const netProfit = totalRevenue - totalExpenses;
-
-  const exportCSV = () => {
-    let rows: string[][] = [];
-    let filename = `rr-fitness-${reportType}-report.csv`;
-
-    if (reportType === 'members') {
-      rows.push(['Member Code', 'Full Name', 'Phone', 'Status', 'Start Date', 'Expiry Date']);
-      members.forEach((m) => {
-        rows.push([m.member_code || '', m.full_name || '', m.phone || '', m.status || '', m.start_date || '', m.expiry_date || '']);
-      });
-    } else if (reportType === 'payments') {
-      rows.push(['Date', 'Member Code', 'Member Name', 'Amount (INR)', 'Method', 'Reference']);
-      payments.forEach((p) => {
-        rows.push([p.payment_date || '', p.members?.member_code || '', p.members?.full_name || '', String(p.amount || 0), p.payment_method || '', p.reference || '']);
-      });
-    } else if (reportType === 'expenses') {
-      rows.push(['Date', 'Title', 'Category', 'Amount (INR)', 'Method']);
-      expenses.forEach((ex) => {
-        rows.push([ex.expense_date || '', ex.title || '', ex.category || '', String(ex.amount || 0), ex.payment_method || '']);
-      });
-    } else if (reportType === 'pnl') {
-      rows.push(['Metric', 'Amount (INR)']);
-      rows.push(['Total Revenue', String(totalRevenue)]);
-      rows.push(['Total Expenses', String(totalExpenses)]);
-      rows.push(['Net Profit', String(netProfit)]);
-    } else if (reportType === 'attendance') {
-      rows.push(['Date', 'Member Code', 'Member Name', 'Entry Time', 'Source']);
-      attendance.forEach((a) => {
-        rows.push([a.attendance_date || '', a.members?.member_code || '', a.members?.full_name || '', a.entry_time || '', a.source || 'manual']);
-      });
-    }
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.map((cell) => `"${cell}"`).join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#71717a' }}>Generating reports…</div>;
-  }
-
-  return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <Card
-        title="Gym Management Reports & Auditing"
-        action={
-          <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#dc2626', color: 'white', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
-            <Download size={15} /> Export CSV
-          </button>
-        }
-      >
-        {/* Report Selector Tabs */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-          <button onClick={() => setReportType('pnl')} style={{ padding: '8px 14px', borderRadius: 8, border: reportType === 'pnl' ? '2px solid #dc2626' : '1px solid #d4d4d8', background: reportType === 'pnl' ? '#dc262610' : '#fff', fontWeight: 700, cursor: 'pointer' }}>Profit & Loss</button>
-          <button onClick={() => setReportType('members')} style={{ padding: '8px 14px', borderRadius: 8, border: reportType === 'members' ? '2px solid #dc2626' : '1px solid #d4d4d8', background: reportType === 'members' ? '#dc262610' : '#fff', fontWeight: 700, cursor: 'pointer' }}>Members Report</button>
-          <button onClick={() => setReportType('payments')} style={{ padding: '8px 14px', borderRadius: 8, border: reportType === 'payments' ? '2px solid #dc2626' : '1px solid #d4d4d8', background: reportType === 'payments' ? '#dc262610' : '#fff', fontWeight: 700, cursor: 'pointer' }}>Payments Report</button>
-          <button onClick={() => setReportType('expenses')} style={{ padding: '8px 14px', borderRadius: 8, border: reportType === 'expenses' ? '2px solid #dc2626' : '1px solid #d4d4d8', background: reportType === 'expenses' ? '#dc262610' : '#fff', fontWeight: 700, cursor: 'pointer' }}>Expenses Report</button>
-          <button onClick={() => setReportType('attendance')} style={{ padding: '8px 14px', borderRadius: 8, border: reportType === 'attendance' ? '2px solid #dc2626' : '1px solid #d4d4d8', background: reportType === 'attendance' ? '#dc262610' : '#fff', fontWeight: 700, cursor: 'pointer' }}>Attendance Log</button>
-        </div>
-
-        {reportType === 'pnl' && (
-          <div style={{ display: 'grid', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 13, color: '#047857', fontWeight: 700 }}>Total Revenue</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#047857', marginTop: 4 }}>{formatINR(totalRevenue)}</div>
-              </div>
-              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 13, color: '#dc2626', fontWeight: 700 }}>Total Expenses</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#dc2626', marginTop: 4 }}>{formatINR(totalExpenses)}</div>
-              </div>
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 13, color: '#1d4ed8', fontWeight: 700 }}>Net Gym Profit</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: netProfit >= 0 ? '#1d4ed8' : '#dc2626', marginTop: 4 }}>{formatINR(netProfit)}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {reportType === 'members' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#f4f4f5', textAlign: 'left' }}>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Member Code</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Full Name</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Phone</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Status</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Expiry Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.id}>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7', fontWeight: 700 }}>{m.member_code || '—'}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{m.full_name}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{m.phone}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{m.status}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{m.expiry_date || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {reportType === 'payments' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#f4f4f5', textAlign: 'left' }}>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Date</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Member</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Amount</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Method</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((p) => (
-                <tr key={p.id}>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{p.payment_date}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{p.members?.full_name} ({p.members?.member_code})</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7', fontWeight: 700, color: '#10b981' }}>{formatINR(Number(p.amount))}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{p.payment_method.toUpperCase()}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{p.reference || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {reportType === 'expenses' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#f4f4f5', textAlign: 'left' }}>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Date</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Title</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Category</th>
-                <th style={{ padding: 10, border: '1px solid #e4e4e7' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((ex) => (
-                <tr key={ex.id}>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{ex.expense_date}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7', fontWeight: 700 }}>{ex.title}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7' }}>{ex.category}</td>
-                  <td style={{ padding: 10, border: '1px solid #e4e4e7', fontWeight: 700, color: '#ef4444' }}>{formatINR(Number(ex.amount))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-// Existing unchanged admin helpers: PlansPage, AnnouncementsPage, ContentPage, GalleryPage, SocialPage, SettingsPage
-export function PlansPage() {
-  const [plans, setPlans] = useState<Row[]>([]);
-  const [form, setForm] = useState({ id: '', name: '', description: '', price: '', duration_days: '', features: '', is_active: true });
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const client = createBrowserClient();
-    if (!client) return;
-    client.from('membership_plans').select('*').order('display_order', { ascending: true }).then(({ data }) => setPlans(data ?? []));
-  }, []);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const client = createBrowserClient();
-    if (!client) return;
-    const payload = { name: form.name, description: form.description, price: form.price, duration_days: Number(form.duration_days), features: form.features.split(',').map(f => f.trim()).filter(f => f), is_active: form.is_active, display_order: form.id ? plans.find(p => p.id === form.id)?.display_order ?? plans.length + 1 : plans.length + 1 };
-    if (form.id) {
-      const { error } = await client.from('membership_plans').update(payload).eq('id', form.id);
-      if (error) { setMessage(error.message); return; }
-    } else {
-      const { error } = await client.from('membership_plans').insert(payload);
-      if (error) { setMessage(error.message); return; }
-    }
-    const { data } = await client.from('membership_plans').select('*').order('display_order', { ascending: true });
-    setPlans(data ?? []);
-    setForm({ id: '', name: '', description: '', price: '', duration_days: '', features: '', is_active: true });
-    setMessage('Plan saved.');
-  };
-
-  const handleEdit = (plan: Row) => {
-    setForm({
-      id: plan.id,
-      name: plan.name ?? '',
-      description: plan.description ?? '',
-      price: plan.price ?? '',
-      duration_days: String(plan.duration_days ?? ''),
-      features: Array.isArray(plan.features) ? plan.features.join(', ') : '',
-      is_active: plan.is_active ?? true,
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = async (plan: Row) => {
-    const client = createBrowserClient();
-    if (!client) return;
-    const { data: membersData } = await client.from('members').select('id').eq('membership_plan_id', plan.id);
-    if (membersData && membersData.length > 0) {
-      setMessage('Cannot delete: This plan is assigned to existing members. Consider deactivating it instead.');
-      return;
-    }
-    if (!window.confirm('Delete this membership plan?')) return;
-    const { error } = await client.from('membership_plans').delete().eq('id', plan.id);
-    if (error) { setMessage(error.message); return; }
-    setPlans((current) => current.filter((p) => p.id !== plan.id));
-    setMessage('Plan deleted.');
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: 18 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#eef7f0', color: '#2f6043' }}>{message}</div>}
-      <div style={{ display: 'grid', gap: 18, gridTemplateColumns: '1fr 0.8fr' }}>
-        <Card title="Membership Plans">
-          <div style={{ display: 'grid', gap: 10 }}>
-            {plans.map((plan) => (
-              <div key={plan.id} style={{ borderBottom: '1px solid #ece7d5', paddingBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{plan.name} • {plan.price}</div>
-                    <div style={{ color: '#687671', fontSize: 13 }}>{plan.description}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" onClick={() => handleEdit(plan)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d7ded8', background: '#fffefb', cursor: 'pointer' }}>Edit</button>
-                    <button type="button" onClick={() => handleDelete(plan)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d8784c', color: '#d8784c', background: '#fffefb', cursor: 'pointer' }}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card title="Create or Edit Plan">
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Plan name" style={inputStyle} />
-            <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={3} style={inputStyle} />
-            <input required value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Price" style={inputStyle} />
-            <input required value={form.duration_days} onChange={(e) => setForm({ ...form, duration_days: e.target.value })} placeholder="Duration (days)" style={inputStyle} />
-            <input value={form.features} onChange={(e) => setForm({ ...form, features: e.target.value })} placeholder="Comma separated features" style={inputStyle} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} type="checkbox" /> Active
-            </label>
-            <button type="submit" style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#d8784c', color: 'white', cursor: 'pointer' }}>{form.id ? 'Update Plan' : 'Save Plan'}</button>
-          </form>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-export function AnnouncementsPage() {
-  const [announcements, setAnnouncements] = useState<Row[]>([]);
-  const [form, setForm] = useState({ id: '', title: '', content: '', is_active: true, start_at: '', expires_at: '' });
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const client = createBrowserClient();
-    if (!client) return;
-    client.from('announcements').select('*').order('created_at', { ascending: false }).then(({ data }) => setAnnouncements(data ?? []));
-  }, []);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const client = createBrowserClient();
-    if (!client) return;
-    const payload = { title: form.title, content: form.content, is_active: form.is_active, start_at: form.start_at || null, expires_at: form.expires_at || null };
-    if (form.id) {
-      const { error } = await client.from('announcements').update(payload).eq('id', form.id);
-      if (error) { setMessage(error.message); return; }
-    } else {
-      const { error } = await client.from('announcements').insert(payload);
-      if (error) { setMessage(error.message); return; }
-    }
-    const { data } = await client.from('announcements').select('*').order('created_at', { ascending: false });
-    setAnnouncements(data ?? []);
-    setForm({ id: '', title: '', content: '', is_active: true, start_at: '', expires_at: '' });
-    setMessage('Announcement saved.');
-  };
-
-  const handleEdit = (item: Row) => {
-    setForm({
-      id: item.id, title: item.title ?? '', content: item.content ?? '', is_active: item.is_active ?? true, start_at: item.start_at ?? '', expires_at: item.expires_at ?? ''
-    });
-  };
-
-  const handleDelete = async (item: Row) => {
-    if (!window.confirm('Delete announcement?')) return;
-    const client = createBrowserClient();
-    if (!client) return;
-    const { error } = await client.from('announcements').delete().eq('id', item.id);
-    if (!error) {
-      setAnnouncements((current) => current.filter((a) => a.id !== item.id));
-      setMessage('Announcement deleted.');
-    }
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: 18 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#eef7f0', color: '#2f6043' }}>{message}</div>}
-      <div style={{ display: 'grid', gap: 18, gridTemplateColumns: '1fr 0.8fr' }}>
-        <Card title="Announcements">
-          <div style={{ display: 'grid', gap: 10 }}>
-            {announcements.map((item) => (
-              <div key={item.id} style={{ borderBottom: '1px solid #ece7d5', paddingBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{item.title}</div>
-                    <div style={{ color: '#687671', fontSize: 13 }}>{item.content}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" onClick={() => handleEdit(item)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d7ded8', background: '#fffefb', cursor: 'pointer' }}>Edit</button>
-                    <button type="button" onClick={() => handleDelete(item)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #d8784c', color: '#d8784c', background: '#fffefb', cursor: 'pointer' }}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card title="Create or Edit Announcement">
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
-            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" style={inputStyle} />
-            <textarea required value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Content" rows={4} style={inputStyle} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} type="checkbox" /> Active
-            </label>
-            <input value={form.start_at} onChange={(e) => setForm({ ...form, start_at: e.target.value })} type="date" style={inputStyle} />
-            <input value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} type="date" style={inputStyle} />
-            <button type="submit" style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#d8784c', color: 'white', cursor: 'pointer' }}>{form.id ? 'Update Announcement' : 'Save Announcement'}</button>
-          </form>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-export function ContentPage() {
-  const [settings, setSettings] = useState<Record<string, string>>({
-    address: '5, Roorkee, Jhabrera, Uttarakhand 247665',
-    location_ref: 'Ambika Battery',
-    hours: 'Open daily until 10 PM',
-    phone_display: '063967 59176',
-    whatsapp_number: '916396759176',
-  });
-  const [content, setContent] = useState<Record<string, string>>({
-    hero_heading: 'RR FITNESS',
-    hero_description: 'Train Hard. Stay Strong. A modern fitness destination in Jhabrera.',
-    about_heading: 'Train Hard. Stay Strong.',
-    about_description: 'RR Fitness is a modern gym in Jhabrera, Uttarakhand offering quality fitness equipment and dumbbell area for your workout.',
-    contact_heading: 'Visit RR Fitness.',
-    contact_description: 'We are located in Jhabrera, Uttarakhand near Ambika Battery.',
-  });
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const client = createBrowserClient();
-    if (!client) return;
-
-    Promise.all([
-      client.from('library_settings').select('setting_key, setting_value').eq('is_public', true),
-      client.from('website_content').select('content_key, content_value').eq('is_active', true),
-    ]).then(([settingsRes, contentRes]) => {
-      if (settingsRes.data && settingsRes.data.length > 0) {
-        const sMap: Record<string, string> = {};
-        settingsRes.data.forEach((r) => { sMap[r.setting_key] = r.setting_value; });
-        setSettings((prev) => ({ ...prev, ...sMap }));
-      }
-      if (contentRes.data && contentRes.data.length > 0) {
-        const cMap: Record<string, string> = {};
-        contentRes.data.forEach((r) => { cMap[r.content_key] = r.content_value; });
-        setContent((prev) => ({ ...prev, ...cMap }));
-      }
-      setLoading(false);
-    });
-  }, []);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const client = createBrowserClient();
-    if (!client) return;
-
-    // Save to library_settings (Centralized Business Settings)
-    const settingUpserts = Object.entries(settings).map(([key, val]) => ({
-      setting_key: key,
-      setting_value: val,
-      is_public: true,
-    }));
-    await client.from('library_settings').upsert(settingUpserts, { onConflict: 'setting_key' });
-
-    // Save to website_content (Hero / Section texts)
-    const contentUpserts = Object.entries(content).map(([key, val]) => ({
-      page: 'home',
-      content_key: key,
-      content_value: val,
-      content_type: 'text',
-      is_active: true,
-    }));
-    await client.from('website_content').upsert(contentUpserts, { onConflict: 'page,content_key' });
-
-    await writeAuditLog('business_settings_updated', 'library_settings', undefined, 'Updated business address, timings, and website content');
-    setMessage('Business address, location reference, timings, and website content saved successfully! All updates are live across the public site, navbar, contact section, and footer.');
-  };
-
-  if (loading) {
-    return <div style={{ padding: 20, color: '#71717a' }}>Loading business content settings…</div>;
-  }
-
-  return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      {message && (
-        <div style={{ padding: 14, borderRadius: 10, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 600 }}>
-          {message}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 20 }}>
-        {/* Business Location & Address */}
-        <Card title="Centralized Business Location & Address (Propagates to Navbar, Contact & Footer)">
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Business Address *</label>
-              <input
-                required
-                value={settings.address || ''}
-                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                placeholder="5, Roorkee, Jhabrera, Uttarakhand 247665"
-                style={inputStyle}
-              />
-              <span style={{ fontSize: 12, color: '#71717a', marginTop: 4, display: 'block' }}>
-                Displayed in topbar, contact card, footer, and member portal.
-              </span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location Reference / Landmark *</label>
-                <input
-                  required
-                  value={settings.location_ref || ''}
-                  onChange={(e) => setSettings({ ...settings, location_ref: e.target.value })}
-                  placeholder="Ambika Battery"
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opening Hours / Timings *</label>
-                <input
-                  required
-                  value={settings.hours || ''}
-                  onChange={(e) => setSettings({ ...settings, hours: e.target.value })}
-                  placeholder="Open daily until 10 PM"
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone Number Display</label>
-                <input
-                  value={settings.phone_display || ''}
-                  onChange={(e) => setSettings({ ...settings, phone_display: e.target.value })}
-                  placeholder="063967 59176"
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp Digits (with country code)</label>
-                <input
-                  value={settings.whatsapp_number || ''}
-                  onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
-                  placeholder="916396759176"
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Website Content Copy */}
-        <Card title="Public Website Section Headings & Text Copy">
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hero Title Heading</label>
-                <input
-                  value={content.hero_heading || ''}
-                  onChange={(e) => setContent({ ...content, hero_heading: e.target.value })}
-                  placeholder="RR FITNESS"
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Section Heading</label>
-                <input
-                  value={content.contact_heading || ''}
-                  onChange={(e) => setContent({ ...content, contact_heading: e.target.value })}
-                  placeholder="Visit RR Fitness."
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hero Description</label>
-              <textarea
-                value={content.hero_description || ''}
-                onChange={(e) => setContent({ ...content, hero_description: e.target.value })}
-                rows={2}
-                placeholder="Train Hard. Stay Strong. A modern fitness destination in Jhabrera."
-                style={inputStyle}
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: '#09090b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Section Description</label>
-              <textarea
-                value={content.contact_description || ''}
-                onChange={(e) => setContent({ ...content, contact_description: e.target.value })}
-                rows={2}
-                placeholder="We are located in Jhabrera, Uttarakhand near Ambika Battery."
-                style={inputStyle}
-              />
-            </div>
-          </div>
-        </Card>
-
-        <button type="submit" style={{ padding: '14px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.3)' }}>
-          Save Business Address & Website Content
-        </button>
-      </form>
-    </div>
-  );
-}
-
 export function GalleryPage() {
   const [items, setItems] = useState<Row[]>([]);
   const [form, setForm] = useState({ id: '', title: '', category: '', alt_text: '', is_published: true, storage_path: '', public_url: '' });
@@ -2130,21 +2240,28 @@ export function GalleryPage() {
     const client = createBrowserClient();
     if (!client) return;
 
-    let storagePath = form.storage_path;
     let publicUrl = form.public_url;
+    let storagePath = form.storage_path;
 
     if (file) {
-      const path = `gallery/${Date.now()}-${file.name}`;
-      const { error: uploadError } = await client.storage.from('library-gallery').upload(path, file, { upsert: true });
-      if (uploadError) { setMessage(`Upload failed: ${uploadError.message}`); return; }
-      const { data: publicData } = client.storage.from('library-gallery').getPublicUrl(path);
-      storagePath = path;
-      publicUrl = publicData.publicUrl;
+      const fileName = `gallery_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const { data: uploadRes, error: uploadErr } = await client.storage.from('gallery-images').upload(fileName, file);
+      if (uploadErr) {
+        setMessage(`Storage Upload Error: ${uploadErr.message}`);
+        return;
+      }
+      storagePath = uploadRes.path;
+      const { data: urlData } = client.storage.from('gallery-images').getPublicUrl(fileName);
+      publicUrl = urlData.publicUrl;
     }
 
     const payload = {
-      title: form.title, category: form.category, alt_text: form.alt_text, storage_path: storagePath, public_url: publicUrl, is_published: form.is_published,
-      display_order: form.id ? items.find(i => i.id === form.id)?.display_order ?? items.length + 1 : items.length + 1
+      title: form.title,
+      category: form.category || 'Gym',
+      alt_text: form.alt_text || form.title,
+      storage_path: storagePath || 'gallery/default.jpg',
+      public_url: publicUrl || '/images/rr-fitness-logo.jpg',
+      is_published: true,
     };
 
     if (form.id) {
@@ -2160,38 +2277,82 @@ export function GalleryPage() {
     setItems(data ?? []);
     setForm({ id: '', title: '', category: '', alt_text: '', is_published: true, storage_path: '', public_url: '' });
     setFile(null);
-    setMessage('Gallery item saved.');
+    setMessage('Gallery photo saved successfully.');
   };
 
   return (
-    <div style={{ display: 'grid', gap: 18 }}>
-      {message && <div style={{ padding: 12, borderRadius: 10, background: '#eef7f0', color: '#2f6043' }}>{message}</div>}
-      <div style={{ display: 'grid', gap: 18, gridTemplateColumns: '1fr 0.8fr' }}>
-        <Card title="Gallery Images">
-          <div style={{ display: 'grid', gap: 10 }}>
-            {items.map((item) => (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ece7d5', paddingBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>{item.title}</div>
-                  <div style={{ color: '#687671', fontSize: 13 }}>{item.category}</div>
+    <div className="space-y-6">
+      {message && (
+        <div className="p-3.5 bg-emerald-950/80 border border-emerald-800 rounded-xl text-emerald-300 text-sm font-medium">
+          {message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 space-y-4">
+          <Card title={`Gallery Photos (${items.length})`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {items.map((item) => (
+                <div key={item.id} className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl space-y-2">
+                  {item.public_url && (
+                    <img src={item.public_url} alt={item.title} className="w-full h-32 object-cover rounded-lg" />
+                  )}
+                  <div className="font-bold text-white text-sm">{item.title}</div>
+                  <div className="text-xs text-zinc-400">{item.category}</div>
                 </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-5 space-y-4">
+          <Card title="Upload Photo to Gallery">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Title *</label>
+                <input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="Photo Title"
+                  className={inputClassName}
+                />
               </div>
-            ))}
-          </div>
-        </Card>
-        <Card title="Upload Gallery Photo">
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
-            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" style={inputStyle} />
-            <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Category" style={inputStyle} />
-            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={inputStyle} />
-            <button type="submit" style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', cursor: 'pointer', fontWeight: 700 }}>Upload Image</button>
-          </form>
-        </Card>
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Category</label>
+                <input
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  placeholder="e.g. Workouts, Equipment"
+                  className={inputClassName}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">Image File *</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className={inputClassName}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm"
+              >
+                Upload Gallery Photo
+              </button>
+            </form>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
 
+// ----------------------------------------------------
+// 11. SOCIAL PAGE
+// ----------------------------------------------------
 export function SocialPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [platform, setPlatform] = useState('instagram');
@@ -2210,36 +2371,61 @@ export function SocialPage() {
     await client.from('social_links').upsert({ platform, url, is_active: true });
     const { data } = await client.from('social_links').select('*').eq('is_active', true);
     setRows(data ?? []);
+    setUrl('');
   };
 
   return (
-    <div style={{ display: 'grid', gap: 18, gridTemplateColumns: '1fr 0.8fr' }}>
-      <Card title="Social Links">
-        <div style={{ display: 'grid', gap: 10 }}>
-          {rows.map((row) => (
-            <div key={row.platform} style={{ borderBottom: '1px solid #ece7d5', paddingBottom: 10 }}>
-              <div style={{ fontWeight: 700 }}>{row.platform}</div>
-              <div style={{ color: '#687671', fontSize: 13 }}>{row.url}</div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="lg:col-span-7 space-y-4">
+        <Card title="Social Links & Handles">
+          <div className="space-y-3">
+            {rows.map((row) => (
+              <div key={row.platform} className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                <div className="font-extrabold text-white text-sm capitalize">{row.platform}</div>
+                <div className="text-xs text-zinc-400 mt-0.5 break-all">{row.url || '—'}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="lg:col-span-5 space-y-4">
+        <Card title="Update Social Link">
+          <form onSubmit={handleSave} className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 mb-1">Platform</label>
+              <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={inputClassName}>
+                <option value="instagram">RR Fitness Instagram</option>
+                <option value="owner_instagram">Owner Instagram</option>
+                <option value="facebook">Facebook Page</option>
+                <option value="whatsapp">WhatsApp Contact</option>
+              </select>
             </div>
-          ))}
-        </div>
-      </Card>
-      <Card title="Update Social Link">
-        <form onSubmit={handleSave} style={{ display: 'grid', gap: 10 }}>
-          <select value={platform} onChange={(e) => setPlatform(e.target.value)} style={inputStyle}>
-            <option value="instagram">RR Fitness Instagram</option>
-            <option value="owner_instagram">Owner Instagram</option>
-            <option value="facebook">Facebook</option>
-            <option value="whatsapp">WhatsApp Number</option>
-          </select>
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="URL or Number" style={inputStyle} />
-          <button type="submit" style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', cursor: 'pointer', fontWeight: 700 }}>Save Link</button>
-        </form>
-      </Card>
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 mb-1">URL / Phone Number</label>
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://instagram.com/..."
+                className={inputClassName}
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm"
+            >
+              Save Link
+            </button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }
 
+// ----------------------------------------------------
+// 12. SETTINGS PAGE
+// ----------------------------------------------------
 export function SettingsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [key, setKey] = useState('address');
@@ -2248,45 +2434,78 @@ export function SettingsPage() {
   useEffect(() => {
     const client = createBrowserClient();
     if (!client) return;
-    client.from('library_settings').select('*').eq('is_public', true).then(({ data }) => setRows(data ?? []));
+    client.from('library_settings').select('*').eq('is_public', true).then(({ data }) => {
+      setRows(data ?? []);
+      const match = (data ?? []).find((r) => r.setting_key === 'address');
+      if (match) setValue(match.setting_value || '');
+    });
   }, []);
+
+  const handleKeyChange = (newKey: string) => {
+    setKey(newKey);
+    const match = rows.find((r) => r.setting_key === newKey);
+    setValue(match ? match.setting_value || '' : '');
+  };
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const client = createBrowserClient();
     if (!client) return;
-    await client.from('library_settings').upsert({ setting_key: key, setting_value: value, is_public: true });
+    await client.from('library_settings').upsert({ setting_key: key, setting_value: value, is_public: true }, { onConflict: 'setting_key' });
     const { data } = await client.from('library_settings').select('*').eq('is_public', true);
     setRows(data ?? []);
   };
 
   return (
-    <div style={{ display: 'grid', gap: 18, gridTemplateColumns: '1fr 0.8fr' }}>
-      <Card title="Centralized Gym Settings">
-        <div style={{ display: 'grid', gap: 10 }}>
-          {rows.map((row) => (
-            <div key={row.setting_key} style={{ borderBottom: '1px solid #ece7d5', paddingBottom: 10 }}>
-              <div style={{ fontWeight: 700 }}>{row.setting_key}</div>
-              <div style={{ color: '#687671', fontSize: 13 }}>{row.setting_value}</div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="lg:col-span-7 space-y-4">
+        <Card title="Centralized Gym Settings">
+          <div className="space-y-3">
+            {rows.map((row) => (
+              <div key={row.setting_key} className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
+                <div className="font-extrabold text-red-500 text-xs uppercase tracking-wider">{row.setting_key}</div>
+                <div className="text-xs text-zinc-300 mt-1 break-words">{row.setting_value}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="lg:col-span-5 space-y-4">
+        <Card title="Edit Centralized Gym Setting">
+          <form onSubmit={handleSave} className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 mb-1">Setting Key</label>
+              <select value={key} onChange={(e) => handleKeyChange(e.target.value)} className={inputClassName}>
+                <option value="business_name">Gym Name</option>
+                <option value="address">Address (Full)</option>
+                <option value="address_short">Short Address (Navbar/Footer)</option>
+                <option value="location_ref">Location Reference / Landmark</option>
+                <option value="hours">Hours / Timings</option>
+                <option value="phone_display">Phone Display</option>
+                <option value="whatsapp_number">WhatsApp Number</option>
+                <option value="directions_url">Google Maps Directions URL</option>
+              </select>
             </div>
-          ))}
-        </div>
-      </Card>
-      <Card title="Edit Centralized Setting">
-        <form onSubmit={handleSave} style={{ display: 'grid', gap: 10 }}>
-          <select value={key} onChange={(e) => setKey(e.target.value)} style={inputStyle}>
-            <option value="business_name">Gym Name</option>
-            <option value="address">Address</option>
-            <option value="location_ref">Location Reference</option>
-            <option value="hours">Hours / Timings</option>
-            <option value="phone_display">Phone Display</option>
-            <option value="whatsapp_number">WhatsApp Number</option>
-            <option value="directions_url">Google Maps Directions URL</option>
-          </select>
-          <textarea value={value} onChange={(e) => setValue(e.target.value)} rows={3} style={inputStyle} />
-          <button type="submit" style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#dc2626', color: 'white', cursor: 'pointer', fontWeight: 700 }}>Save Setting</button>
-        </form>
-      </Card>
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 mb-1">Setting Value</label>
+              <textarea
+                rows={4}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="Enter setting value..."
+                className={inputClassName}
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm"
+            >
+              Save Gym Setting
+            </button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }
