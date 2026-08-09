@@ -8,6 +8,7 @@ import {
   Clock3,
   Copy,
   Dumbbell,
+  Facebook,
   Flame,
   Instagram,
   MapPin,
@@ -96,7 +97,7 @@ export default function LibrarySite() {
     <main>
       <div className="topbar">
         <div className="container topbar-inner">
-          <span><Clock3 size={14} /> Open until 10 PM</span>
+          <span><Clock3 size={14} /> {currentConfig.hours}</span>
           <span className="topbar-divider" />
           <span><MapPin size={14} /> {currentConfig.addressShort} (Near {currentConfig.locationRef})</span>
           <a href={`tel:${currentConfig.phoneDigits}`}><Phone size={14} /> {currentConfig.phoneDisplay}</a>
@@ -114,6 +115,19 @@ export default function LibrarySite() {
           </a>
           <nav className={`desktop-nav ${menuOpen ? 'mobile-nav-open' : ''}`} aria-label="Main navigation">
             {navItems.map((item) => <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>)}
+            {currentConfig.socialLinks.instagramUrl && (
+              <a className="nav-social-link" href={currentConfig.socialLinks.instagramUrl} target="_blank" rel="noreferrer" aria-label="RR Fitness Instagram" title="RR Fitness Instagram" onClick={() => setMenuOpen(false)}>
+                <Instagram size={18} />
+              </a>
+            )}
+            {currentConfig.socialLinks.facebookUrl && (
+              <a className="nav-social-link" href={currentConfig.socialLinks.facebookUrl} target="_blank" rel="noreferrer" aria-label="RR Fitness Facebook" title="RR Fitness Facebook" onClick={() => setMenuOpen(false)}>
+                <Facebook size={18} />
+              </a>
+            )}
+            <a className="nav-portal-link" href="/member/login" onClick={() => setMenuOpen(false)}>
+              Member Login
+            </a>
             <WhatsAppButton message={whatsappMessages.general}>Join Now</WhatsAppButton>
           </nav>
           <button className="menu-toggle" onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen}>

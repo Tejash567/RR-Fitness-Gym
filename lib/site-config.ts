@@ -85,7 +85,7 @@ export const siteConfig: LibraryConfig = {
     'https://www.google.com/maps/search/?api=1&query=' +
     encodeURIComponent('RR Fitness, 5, Roorkee, Jhabrera, Uttarakhand 247665'),
   socialLinks: {
-    instagramUrl: 'https://www.instagram.com/rr_fitness_gym_',
+    instagramUrl: 'https://www.instagram.com/rr_fitness_gym_/',
     ownerInstagramUrl: 'https://www.instagram.com/chaudhary_himanshu_ross/',
     facebookUrl: '',
     whatsappNumber: '916396759176',

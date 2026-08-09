@@ -163,8 +163,10 @@ export async function loadPublicSiteData(): Promise<PublicSiteData> {
       socialLinks,
       libraryConfig: {
         ...libraryConfig,
+        name: settings.business_name ?? libraryConfig.name,
         address: settings.address ?? libraryConfig.address,
         addressShort: settings.address ?? libraryConfig.addressShort,
+        locationRef: settings.location_ref ?? libraryConfig.locationRef,
         hours: settings.hours ?? libraryConfig.hours,
         phoneDisplay: settings.phone_display ?? libraryConfig.phoneDisplay,
         phoneDigits: settings.whatsapp_number ?? libraryConfig.phoneDigits,
