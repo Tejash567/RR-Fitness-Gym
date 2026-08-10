@@ -67,6 +67,7 @@ import {
   formatDateDisplay,
   formatDateISO,
   formatWhatsAppReminderUrl,
+  generateNextMemberCode,
   parseLocalDate,
   sanitizePayload,
 } from '@/lib/membership';
@@ -728,28 +729,45 @@ export function MembersPage() {
       }
     }
 
-    const code = `RR-${Math.floor(1000 + Math.random() * 9000)}`;
+    // Generate next sequential member_code in RR-F-XXXX format with concurrency retry loop
+    let inserted: any = null;
+    let lastErr: any = null;
 
-    // Sanitize payload: convert all empty strings to null for optional DATE, UUID, and text fields
-    const payload = sanitizePayload({
-      ...formData,
-      expiry_date: computedExpiry || null,
-      member_code: code,
-      status: 'active',
-    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const nextCode = await generateNextMemberCode(client);
 
-    const { data: inserted, error: err } = await client
-      .from('members')
-      .insert(payload)
-      .select()
-      .single();
+      const payload = sanitizePayload({
+        ...formData,
+        expiry_date: computedExpiry || null,
+        member_code: nextCode,
+        status: 'active',
+      });
 
-    if (err) {
-      alert(`Error creating member: ${err.message}`);
+      const { data, error } = await client
+        .from('members')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (!error && data) {
+        inserted = data;
+        break;
+      }
+
+      lastErr = error;
+      if (error?.code === '23505' || error?.message?.includes('unique') || error?.message?.includes('member_code')) {
+        continue;
+      } else {
+        break;
+      }
+    }
+
+    if (!inserted) {
+      alert(`Error creating member: ${lastErr?.message || 'Failed to generate unique member code'}`);
       return;
     }
 
-    await writeAuditLog('CREATE_MEMBER', 'member', inserted.id, `Created member ${formData.full_name}`);
+    await writeAuditLog('CREATE_MEMBER', 'member', inserted.id, `Created member ${formData.full_name} (${inserted.member_code})`);
     setShowCreateModal(false);
     resetMemberForm();
     await loadData();

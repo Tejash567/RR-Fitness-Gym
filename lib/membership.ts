@@ -284,4 +284,35 @@ export function sanitizePayload<T extends Record<string, any>>(data: T): T {
   return sanitized as T;
 }
 
+export async function generateNextMemberCode(client: any): Promise<string> {
+  const { data: members, error } = await client
+    .from('members')
+    .select('member_code');
+
+  if (error) {
+    console.error('Error fetching member codes:', error);
+    return 'RR-F-0001';
+  }
+
+  let maxNum = 0;
+
+  if (members && Array.isArray(members)) {
+    for (const m of members) {
+      if (!m.member_code) continue;
+      const str = String(m.member_code).trim();
+      const match = str.match(/([0-9]+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  return `RR-F-${String(nextNum).padStart(4, '0')}`;
+}
+
+
 
