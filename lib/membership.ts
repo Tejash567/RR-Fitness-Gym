@@ -270,3 +270,18 @@ export function calculateRenewalDates({
   };
 }
 
+export function sanitizePayload<T extends Record<string, any>>(data: T): T {
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      sanitized[key] = trimmed === '' ? null : trimmed;
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized as T;
+}
+
+

@@ -68,6 +68,7 @@ import {
   formatDateISO,
   formatWhatsAppReminderUrl,
   parseLocalDate,
+  sanitizePayload,
 } from '@/lib/membership';
 
 const inputClassName =
@@ -683,19 +684,63 @@ export function MembersPage() {
     }
   };
 
+  const resetMemberForm = () => {
+    setFormData({
+      full_name: '',
+      phone: '',
+      email: '',
+      gender: 'male',
+      membership_plan_id: '',
+      start_date: new Date().toISOString().slice(0, 10),
+      expiry_date: '',
+      dob: '',
+      address: '',
+      emergency_contact: '',
+      device_user_id: '',
+      notes: '',
+    });
+  };
+
   const handleCreateMember = async (e: FormEvent) => {
     e.preventDefault();
+    if (!formData.full_name?.trim()) {
+      alert('Please enter a valid Full Name.');
+      return;
+    }
+    if (!formData.phone?.trim()) {
+      alert('Please enter a valid Phone Number.');
+      return;
+    }
+
     const client = createBrowserClient();
     if (!client) return;
 
+    // Auto-calculate expiry date if plan is selected and expiry date is left blank
+    let computedExpiry = formData.expiry_date ? formData.expiry_date.trim() : '';
+    if (!computedExpiry && formData.membership_plan_id) {
+      const selectedPlan = plans.find((p) => p.id === formData.membership_plan_id);
+      if (selectedPlan) {
+        const duration = Number(selectedPlan.duration_days || 30);
+        const start = parseLocalDate(formData.start_date) || new Date();
+        const end = new Date(start);
+        end.setDate(end.getDate() + duration - 1);
+        computedExpiry = formatDateISO(end);
+      }
+    }
+
     const code = `RR-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Sanitize payload: convert all empty strings to null for optional DATE, UUID, and text fields
+    const payload = sanitizePayload({
+      ...formData,
+      expiry_date: computedExpiry || null,
+      member_code: code,
+      status: 'active',
+    });
+
     const { data: inserted, error: err } = await client
       .from('members')
-      .insert({
-        ...formData,
-        member_code: code,
-        status: 'active',
-      })
+      .insert(payload)
       .select()
       .single();
 
@@ -706,25 +751,38 @@ export function MembersPage() {
 
     await writeAuditLog('CREATE_MEMBER', 'member', inserted.id, `Created member ${formData.full_name}`);
     setShowCreateModal(false);
-    loadData();
+    resetMemberForm();
+    await loadData();
   };
 
   const handleEditMember = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedMember) return;
+    if (!formData.full_name?.trim()) {
+      alert('Please enter a valid Full Name.');
+      return;
+    }
+    if (!formData.phone?.trim()) {
+      alert('Please enter a valid Phone Number.');
+      return;
+    }
+
     const client = createBrowserClient();
     if (!client) return;
 
-    const { error: err } = await client.from('members').update(formData).eq('id', selectedMember.id);
+    // Sanitize payload: convert all empty strings to null
+    const payload = sanitizePayload(formData);
+
+    const { error: err } = await client.from('members').update(payload).eq('id', selectedMember.id);
     if (err) {
       alert(`Error updating member: ${err.message}`);
       return;
     }
 
-    await writeAuditLog('UPDATE_MEMBER', 'member', selectedMember.id, `Updated details`);
+    await writeAuditLog('UPDATE_MEMBER', 'member', selectedMember.id, `Updated member profile details`);
     setShowEditModal(false);
-    loadData();
-    openMemberProfile({ ...selectedMember, ...formData });
+    await loadData();
+    openMemberProfile({ ...selectedMember, ...payload });
   };
 
   const handleToggleDeactivate = async (member: Row) => {
@@ -1384,6 +1442,16 @@ export function MembersPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email</label>
+                  <input value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className={inputClassName} placeholder="rahul@example.com" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Date of Birth (DOB)</label>
+                  <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} className={inputClassName} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Membership Plan</label>
                   <select value={formData.membership_plan_id} onChange={(e) => setFormData({ ...formData, membership_plan_id: e.target.value })} className={inputClassName}>
                     <option value="">Select Plan</option>
@@ -1407,9 +1475,15 @@ export function MembersPage() {
                   <input value={formData.device_user_id} onChange={(e) => setFormData({ ...formData, device_user_id: e.target.value })} className={inputClassName} placeholder="101" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Address</label>
-                <input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className={inputClassName} placeholder="Roorkee, Uttarakhand" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Address</label>
+                  <input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className={inputClassName} placeholder="Roorkee, Uttarakhand" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Emergency Contact</label>
+                  <input value={formData.emergency_contact} onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })} className={inputClassName} placeholder="Parent / Spouse phone" />
+                </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Cancel</button>
@@ -1439,8 +1513,22 @@ export function MembersPage() {
                   <input required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className={inputClassName} />
                 </div>
                 <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Gender</label>
+                  <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className={inputClassName}>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Email</label>
                   <input value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className={inputClassName} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Date of Birth (DOB)</label>
+                  <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} className={inputClassName} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1453,9 +1541,19 @@ export function MembersPage() {
                   <input type="date" value={formData.expiry_date} onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} className={inputClassName} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Biometric Device User ID</label>
+                  <input value={formData.device_user_id} onChange={(e) => setFormData({ ...formData, device_user_id: e.target.value })} className={inputClassName} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Emergency Contact</label>
+                  <input value={formData.emergency_contact} onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })} className={inputClassName} />
+                </div>
+              </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Biometric Device User ID</label>
-                <input value={formData.device_user_id} onChange={(e) => setFormData({ ...formData, device_user_id: e.target.value })} className={inputClassName} />
+                <label className="block text-xs font-bold text-slate-700 mb-1">Address</label>
+                <input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className={inputClassName} />
               </div>
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Cancel</button>
