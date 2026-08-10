@@ -19,6 +19,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { createBrowserClient, isSupabaseConfigured } from '@/lib/supabase';
+import { formatDateDisplay } from '@/lib/membership';
 
 type MemberData = {
   id: string;
@@ -59,6 +60,9 @@ type PaymentRow = {
   payment_method: string;
   reference: string | null;
   notes: string | null;
+  membership_start_date?: string | null;
+  membership_end_date?: string | null;
+  membership_plans?: { name: string } | { name: string }[] | null;
 };
 
 type AttendanceRow = {
@@ -266,7 +270,7 @@ export function MemberDashboardPage() {
     setMember(memberData);
 
     const [paymentsRes, attendanceRes, announcementsRes] = await Promise.all([
-      client.from('payments').select('id, amount, payment_date, payment_method, reference, notes').eq('member_id', memberData.id).order('payment_date', { ascending: false }),
+      client.from('payments').select('id, amount, payment_date, payment_method, reference, notes, membership_start_date, membership_end_date, membership_plans(name)').eq('member_id', memberData.id).order('payment_date', { ascending: false }),
       client.from('attendance').select('id, attendance_date, entry_time, exit_time, source').eq('member_id', memberData.id).order('attendance_date', { ascending: false }),
       client.from('announcements').select('id, title, content, start_at, expires_at, created_at').eq('is_active', true).order('created_at', { ascending: false }),
     ]);
@@ -665,17 +669,29 @@ export function MemberDashboardPage() {
 
             {payments.length > 0 ? (
               <div style={{ display: 'grid', gap: 10 }}>
-                {payments.map((p) => (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #27272a', paddingBottom: 10 }}>
-                    <div>
-                      <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 15 }}>₹{p.amount}</div>
-                      <div style={{ fontSize: 12, color: '#71717a' }}>Method: {p.payment_method.toUpperCase()} {p.reference ? `(${p.reference})` : ''}</div>
+                {payments.map((p) => {
+                  const planName = (Array.isArray(p.membership_plans) ? p.membership_plans[0]?.name : p.membership_plans?.name) || 'Membership Plan';
+                  return (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #27272a', paddingBottom: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 15 }}>
+                          ₹{p.amount} <span style={{ fontSize: 12, fontWeight: 600, color: '#e4e4e7', marginLeft: 6 }}>({planName})</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#71717a', marginTop: 2 }}>
+                          Method: {p.payment_method.toUpperCase()} {p.reference ? `(${p.reference})` : ''}
+                        </div>
+                        {p.membership_start_date && p.membership_end_date && (
+                          <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 2, fontWeight: 500 }}>
+                            Period: {formatDateDisplay(p.membership_start_date)} → {formatDateDisplay(p.membership_end_date)}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize: 13, color: '#a1a1aa' }}>
+                        {formatDateDisplay(p.payment_date)}
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right', fontSize: 13, color: '#a1a1aa' }}>
-                      {p.payment_date}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div style={{ color: '#71717a', fontSize: 14, padding: '16px 0' }}>No payment records found.</div>

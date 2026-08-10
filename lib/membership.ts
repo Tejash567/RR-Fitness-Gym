@@ -195,3 +195,78 @@ export function formatWhatsAppReminderUrl(
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
+
+export interface RenewalCalculationParams {
+  currentMember?: {
+    start_date?: string | Date | null;
+    expiry_date?: string | Date | null;
+    status?: string | null;
+  } | null;
+  durationDays: number;
+  paymentDateStr?: string | null;
+}
+
+export interface RenewalCalculationResult {
+  paymentStartDate: string;
+  paymentEndDate: string;
+  memberStartDate: string;
+  memberExpiryDate: string;
+  memberStatus: 'active';
+  isExtension: boolean;
+}
+
+export function calculateRenewalDates({
+  currentMember,
+  durationDays,
+  paymentDateStr,
+}: RenewalCalculationParams): RenewalCalculationResult {
+  const safeDuration = Math.max(1, Number(durationDays) || 30);
+  const payDate = parseLocalDate(paymentDateStr) || new Date();
+  payDate.setHours(0, 0, 0, 0);
+  const payDateISO = formatDateISO(payDate);
+
+  const rawStatus = (currentMember?.status || '').toLowerCase();
+  const isDeactivated = rawStatus === 'deactivated' || rawStatus === 'inactive';
+
+  const currentExpiry = parseLocalDate(currentMember?.expiry_date);
+  if (currentExpiry) {
+    currentExpiry.setHours(0, 0, 0, 0);
+  }
+
+  // Active membership: current expiry exists, is >= payment date, and member is not deactivated
+  const isActiveMember = !isDeactivated && currentExpiry !== null && currentExpiry >= payDate;
+
+  if (isActiveMember && currentExpiry) {
+    // Renewal for active member: extend from current expiry date
+    const nextStart = new Date(currentExpiry);
+    nextStart.setDate(nextStart.getDate() + 1);
+
+    const newExpiry = new Date(currentExpiry);
+    newExpiry.setDate(newExpiry.getDate() + safeDuration);
+
+    const memberStartStr = formatDateISO(currentMember?.start_date) || payDateISO;
+
+    return {
+      paymentStartDate: formatDateISO(nextStart),
+      paymentEndDate: formatDateISO(newExpiry),
+      memberStartDate: memberStartStr,
+      memberExpiryDate: formatDateISO(newExpiry),
+      memberStatus: 'active',
+      isExtension: true,
+    };
+  }
+
+  // Expired member (or no prior expiry date)
+  const newExpiry = new Date(payDate);
+  newExpiry.setDate(newExpiry.getDate() + safeDuration - 1);
+
+  return {
+    paymentStartDate: payDateISO,
+    paymentEndDate: formatDateISO(newExpiry),
+    memberStartDate: payDateISO,
+    memberExpiryDate: formatDateISO(newExpiry),
+    memberStatus: 'active',
+    isExtension: false,
+  };
+}
+

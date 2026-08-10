@@ -61,6 +61,7 @@ import { createBrowserClient } from '@/lib/supabase';
 import {
   calculateEffectiveExpiry,
   calculateMembershipStatus,
+  calculateRenewalDates,
   canMemberEnter,
   cleanIndianPhoneNumber,
   formatDateDisplay,
@@ -507,9 +508,30 @@ export function MembersPage() {
   const [chargeNotes, setChargeNotes] = useState('');
 
   // Payment form
+  const [paymentPlanId, setPaymentPlanId] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
+
+  const openRecordPaymentModalForMember = (member: Row) => {
+    const initialPlanId = member.membership_plan_id || plans[0]?.id || '';
+    setPaymentPlanId(initialPlanId);
+    const matchedPlan = plans.find((p) => p.id === initialPlanId);
+    setPaymentAmount(matchedPlan?.price ? String(matchedPlan.price) : '');
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentMethod('cash');
+    setPaymentNotes('');
+    setShowRecordPaymentModal(true);
+  };
+
+  const handleRecordPaymentPlanChange = (planId: string) => {
+    setPaymentPlanId(planId);
+    const matchedPlan = plans.find((p) => p.id === planId);
+    if (matchedPlan?.price) {
+      setPaymentAmount(String(matchedPlan.price));
+    }
+  };
 
   // Permanent Delete form
   const [showPermanentDeleteModal, setShowPermanentDeleteModal] = useState(false);
@@ -840,26 +862,65 @@ export function MembersPage() {
     const client = createBrowserClient();
     if (!client) return;
 
-    const { error: err } = await client.from('payments').insert({
-      member_id: selectedMember.id,
-      membership_plan_id: selectedMember.membership_plan_id || null,
-      amount: Number(paymentAmount),
-      payment_date: new Date().toISOString().slice(0, 10),
-      payment_method: paymentMethod,
-      notes: paymentNotes,
+    const selectedPlan = plans.find((p) => p.id === paymentPlanId) || plans.find((p) => p.id === selectedMember.membership_plan_id) || plans[0];
+    const durationDays = Number(selectedPlan?.duration_days || 30);
+
+    const calcRes = calculateRenewalDates({
+      currentMember: selectedMember,
+      durationDays,
+      paymentDateStr: paymentDate || new Date().toISOString().slice(0, 10),
     });
+
+    const isAmountOverridden = selectedPlan && Number(selectedPlan.price) !== Number(paymentAmount);
+    const overrideNote = isAmountOverridden ? ` (Custom fee ₹${paymentAmount}, Plan original ₹${selectedPlan.price})` : '';
+
+    const { data: createdPayment, error: err } = await client.from('payments').insert({
+      member_id: selectedMember.id,
+      membership_plan_id: selectedPlan?.id || selectedMember.membership_plan_id || null,
+      amount: Number(paymentAmount),
+      payment_date: paymentDate || new Date().toISOString().slice(0, 10),
+      payment_method: paymentMethod,
+      membership_start_date: calcRes.paymentStartDate,
+      membership_end_date: calcRes.paymentEndDate,
+      notes: (paymentNotes || '') + overrideNote,
+    }).select().single();
 
     if (err) {
       alert(`Payment error: ${err.message}`);
       return;
     }
 
-    await writeAuditLog('RECORD_PAYMENT', 'payment', selectedMember.id, `Recorded ₹${paymentAmount} via ${paymentMethod}`);
+    const { error: memErr } = await client.from('members').update({
+      membership_plan_id: selectedPlan?.id || selectedMember.membership_plan_id,
+      start_date: calcRes.memberStartDate,
+      expiry_date: calcRes.memberExpiryDate,
+      status: 'active',
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedMember.id);
+
+    if (memErr) {
+      alert(`Member status update error: ${memErr.message}`);
+      return;
+    }
+
+    await writeAuditLog(
+      'RECORD_PAYMENT',
+      'payment',
+      createdPayment.id,
+      `Recorded ₹${paymentAmount} via ${paymentMethod} for ${selectedMember.full_name} (${calcRes.paymentStartDate} → ${calcRes.paymentEndDate})${overrideNote}`
+    );
+
     setShowRecordPaymentModal(false);
     setPaymentAmount('');
     setPaymentNotes('');
-    loadData();
-    openMemberProfile(selectedMember);
+
+    await loadData();
+
+    // Re-fetch updated member profile to reflect refreshed dates & status immediately
+    const { data: updatedMem } = await client.from('members').select('*, membership_plans(name, price)').eq('id', selectedMember.id).single();
+    if (updatedMem) {
+      openMemberProfile(updatedMem);
+    }
   };
 
   const filteredMembers = useMemo(() => {
@@ -1119,7 +1180,7 @@ export function MembersPage() {
                   <Edit size={14} /> Edit Profile
                 </button>
                 <button
-                  onClick={() => setShowRecordPaymentModal(true)}
+                  onClick={() => openRecordPaymentModalForMember(selectedMember)}
                   className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
                 >
                   <CreditCard size={14} /> Record Payment
@@ -1202,7 +1263,9 @@ export function MembersPage() {
                     <thead>
                       <tr className="bg-slate-100 text-slate-600 font-bold uppercase border-b border-slate-200">
                         <th className="p-2">Date</th>
-                        <th className="p-2">Type / Method</th>
+                        <th className="p-2">Plan</th>
+                        <th className="p-2">Paid Membership Period</th>
+                        <th className="p-2">Method</th>
                         <th className="p-2">Amount</th>
                         <th className="p-2">Status</th>
                         <th className="p-2">Notes</th>
@@ -1212,7 +1275,11 @@ export function MembersPage() {
                       {memberPayments.map((p) => (
                         <tr key={p.id} className="hover:bg-slate-50">
                           <td className="p-2 font-medium">{formatDateDisplay(p.payment_date)}</td>
-                          <td className="p-2 uppercase font-bold text-slate-700">Payment ({p.payment_method})</td>
+                          <td className="p-2 font-bold text-slate-800">{p.membership_plans?.name || 'Gym Plan'}</td>
+                          <td className="p-2 font-medium text-slate-700">
+                            {p.membership_start_date ? `${formatDateDisplay(p.membership_start_date)} → ${formatDateDisplay(p.membership_end_date)}` : 'N/A'}
+                          </td>
+                          <td className="p-2 uppercase font-bold text-slate-600">{p.payment_method}</td>
                           <td className="p-2 font-bold text-emerald-700">{formatINR(Number(p.amount))}</td>
                           <td className="p-2"><span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">PAID</span></td>
                           <td className="p-2 text-slate-500">{p.notes || '-'}</td>
@@ -1221,7 +1288,9 @@ export function MembersPage() {
                       {memberExtraCharges.map((c) => (
                         <tr key={c.id} className="hover:bg-slate-50">
                           <td className="p-2 font-medium">{formatDateDisplay(c.charge_date)}</td>
+                          <td className="p-2 text-slate-400">-</td>
                           <td className="p-2 font-bold text-purple-700">Fine/Charge ({c.reason})</td>
+                          <td className="p-2 text-slate-400">-</td>
                           <td className="p-2 font-bold text-slate-900">{formatINR(Number(c.amount))}</td>
                           <td className="p-2">
                             <span className={`font-bold px-2 py-0.5 rounded ${c.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
@@ -1232,7 +1301,7 @@ export function MembersPage() {
                         </tr>
                       ))}
                       {memberPayments.length === 0 && memberExtraCharges.length === 0 && (
-                        <tr><td colSpan={5} className="p-4 text-center text-slate-400">No payment or charge records logged.</td></tr>
+                        <tr><td colSpan={7} className="p-4 text-center text-slate-400">No payment or charge records logged.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -1484,40 +1553,103 @@ export function MembersPage() {
       )}
 
       {/* RECORD PAYMENT MODAL */}
-      {showRecordPaymentModal && selectedMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-black text-slate-900 m-0">Record Payment</h3>
-              <button onClick={() => setShowRecordPaymentModal(false)} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
+      {showRecordPaymentModal && selectedMember && (() => {
+        const activePlan = plans.find((p) => p.id === paymentPlanId) || plans.find((p) => p.id === selectedMember.membership_plan_id) || plans[0];
+        const planDuration = Number(activePlan?.duration_days || 30);
+        const calcRes = calculateRenewalDates({
+          currentMember: selectedMember,
+          durationDays: planDuration,
+          paymentDateStr: paymentDate,
+        });
+        const isOverridden = activePlan && Number(activePlan.price) !== Number(paymentAmount);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 m-0">Record Membership Renewal</h3>
+                  <div className="text-xs text-slate-500 mt-0.5">{selectedMember.full_name} ({selectedMember.member_code || selectedMember.phone})</div>
+                </div>
+                <button onClick={() => setShowRecordPaymentModal(false)} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
+              </div>
+              <form onSubmit={handleRecordPaymentSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Select Membership Plan *</label>
+                  <select
+                    required
+                    value={paymentPlanId}
+                    onChange={(e) => handleRecordPaymentPlanChange(e.target.value)}
+                    className={inputClassName}
+                  >
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name} — ₹{p.price} ({p.duration_days || 30} days)</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Amount Paid (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      className={inputClassName}
+                      placeholder={activePlan?.price || '1000'}
+                    />
+                    {isOverridden && (
+                      <div className="text-[10px] text-amber-600 font-bold mt-1">Manual Price Override (Original ₹{activePlan?.price})</div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Payment Date</label>
+                    <input
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      className={inputClassName}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Payment Method</label>
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputClassName}>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="online">Online</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                {/* Membership Period Calculation Preview Card */}
+                <div className="p-3 bg-red-50/60 border border-red-100 rounded-xl space-y-1.5 text-xs text-slate-700">
+                  <div className="font-extrabold text-red-900 flex items-center justify-between">
+                    <span>RENEWAL PERIOD COVERED</span>
+                    <span className="text-[10px] uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded font-black">
+                      {calcRes.isExtension ? 'Extension' : 'New Start'}
+                    </span>
+                  </div>
+                  <div className="font-semibold text-slate-900 text-sm">
+                    {formatDateDisplay(calcRes.paymentStartDate)} → {formatDateDisplay(calcRes.paymentEndDate)}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Member status will update to <span className="font-extrabold text-emerald-700">ACTIVE</span> (Expiry: {formatDateDisplay(calcRes.memberExpiryDate)})
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Notes</label>
+                  <textarea rows={2} value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} className={inputClassName} placeholder="Renewal payment" />
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button type="button" onClick={() => setShowRecordPaymentModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Cancel</button>
+                  <button type="submit" className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm">Save & Activate Renewal</button>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleRecordPaymentSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Amount (₹) *</label>
-                <input type="number" required placeholder={selectedMember.membership_plans?.price || '1000'} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className={inputClassName} />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Payment Method</label>
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputClassName}>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="online">Online</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Notes</label>
-                <textarea rows={2} value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} className={inputClassName} placeholder="Monthly renewal payment" />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button type="button" onClick={() => setShowRecordPaymentModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Cancel</button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm">Record Payment</button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* PERMANENT DELETE MEMBER MODAL */}
       {showPermanentDeleteModal && selectedMember && (
@@ -1628,16 +1760,52 @@ export function PaymentsPage() {
     loadData();
   }, []);
 
+  const handleMemberSelectChange = (memId: string) => {
+    setSelectedMemberId(memId);
+    const targetMember = members.find((m) => m.id === memId);
+    const planId = selectedPlanId || targetMember?.membership_plan_id || plans[0]?.id || '';
+    if (planId) {
+      setSelectedPlanId(planId);
+      const matchedPlan = plans.find((p) => p.id === planId);
+      if (matchedPlan?.price) setAmount(String(matchedPlan.price));
+      const calcRes = calculateRenewalDates({
+        currentMember: targetMember,
+        durationDays: Number(matchedPlan?.duration_days || 30),
+        paymentDateStr: paymentDate,
+      });
+      setStartDate(calcRes.paymentStartDate);
+      setEndDate(calcRes.paymentEndDate);
+    }
+  };
+
   const handlePlanSelectChange = (planId: string) => {
     setSelectedPlanId(planId);
     const matchedPlan = plans.find((p) => p.id === planId);
+    const targetMember = members.find((m) => m.id === selectedMemberId);
     if (matchedPlan) {
       if (matchedPlan.price) setAmount(String(matchedPlan.price));
-      const duration = Number(matchedPlan.duration_days || 30);
-      const start = parseLocalDate(startDate) || new Date();
-      const end = new Date(start);
-      end.setDate(end.getDate() + duration);
-      setEndDate(formatDateISO(end));
+      const calcRes = calculateRenewalDates({
+        currentMember: targetMember,
+        durationDays: Number(matchedPlan.duration_days || 30),
+        paymentDateStr: paymentDate,
+      });
+      setStartDate(calcRes.paymentStartDate);
+      setEndDate(calcRes.paymentEndDate);
+    }
+  };
+
+  const handlePaymentDateChange = (payDateStr: string) => {
+    setPaymentDate(payDateStr);
+    const matchedPlan = plans.find((p) => p.id === selectedPlanId);
+    const targetMember = members.find((m) => m.id === selectedMemberId);
+    if (matchedPlan) {
+      const calcRes = calculateRenewalDates({
+        currentMember: targetMember,
+        durationDays: Number(matchedPlan.duration_days || 30),
+        paymentDateStr: payDateStr,
+      });
+      setStartDate(calcRes.paymentStartDate);
+      setEndDate(calcRes.paymentEndDate);
     }
   };
 
@@ -1647,7 +1815,7 @@ export function PaymentsPage() {
     const duration = Number(matchedPlan?.duration_days || 30);
     const start = parseLocalDate(dateStr) || new Date();
     const end = new Date(start);
-    end.setDate(end.getDate() + duration);
+    end.setDate(end.getDate() + duration - 1);
     setEndDate(formatDateISO(end));
   };
 
@@ -1666,6 +1834,19 @@ export function PaymentsPage() {
     if (!client) return;
 
     const targetMember = members.find((m) => m.id === selectedMemberId);
+    const matchedPlan = plans.find((p) => p.id === selectedPlanId);
+
+    const calcRes = calculateRenewalDates({
+      currentMember: targetMember,
+      durationDays: Number(matchedPlan?.duration_days || 30),
+      paymentDateStr: paymentDate,
+    });
+
+    const finalStartDate = startDate || calcRes.paymentStartDate;
+    const finalEndDate = endDate || calcRes.paymentEndDate;
+
+    const isAmountOverridden = matchedPlan && Number(matchedPlan.price) !== Number(amount);
+    const overrideNote = isAmountOverridden ? ` (Custom fee ₹${amount}, Plan price ₹${matchedPlan.price})` : '';
 
     const { data: createdPayment, error: payErr } = await client.from('payments').insert({
       member_id: selectedMemberId,
@@ -1673,9 +1854,9 @@ export function PaymentsPage() {
       amount: Number(amount),
       payment_date: paymentDate,
       payment_method: paymentMethod,
-      membership_start_date: startDate || null,
-      membership_end_date: endDate || null,
-      notes: notes || null,
+      membership_start_date: finalStartDate,
+      membership_end_date: finalEndDate,
+      notes: (notes || '') + overrideNote,
     }).select().single();
 
     if (payErr) {
@@ -1683,21 +1864,27 @@ export function PaymentsPage() {
       return;
     }
 
-    // Update member expiry date & plan
-    if (endDate && targetMember) {
-      await client.from('members').update({
+    // Update member record: start_date, expiry_date, status = 'active'
+    if (targetMember) {
+      const { error: memErr } = await client.from('members').update({
         membership_plan_id: selectedPlanId || targetMember.membership_plan_id,
-        start_date: startDate || targetMember.start_date,
-        expiry_date: endDate,
+        start_date: calcRes.memberStartDate,
+        expiry_date: calcRes.memberExpiryDate,
         status: 'active',
+        updated_at: new Date().toISOString(),
       }).eq('id', selectedMemberId);
+
+      if (memErr) {
+        alert(`Member update error: ${memErr.message}`);
+        return;
+      }
     }
 
-    await writeAuditLog('RECORD_PAYMENT', 'payment', createdPayment.id, `Recorded ₹${amount} for ${targetMember?.full_name || 'Member'}`);
+    await writeAuditLog('RECORD_PAYMENT', 'payment', createdPayment.id, `Recorded ₹${amount} for ${targetMember?.full_name || 'Member'} (${finalStartDate} → ${finalEndDate})${overrideNote}`);
 
     setShowRecordModal(false);
     resetForm();
-    loadData();
+    await loadData();
   };
 
   const handleUpdatePayment = async (e: FormEvent) => {
@@ -1906,7 +2093,7 @@ export function PaymentsPage() {
             <form onSubmit={handleRecordPayment} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Member *</label>
-                <select required value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} className={inputClassName}>
+                <select required value={selectedMemberId} onChange={(e) => handleMemberSelectChange(e.target.value)} className={inputClassName}>
                   <option value="">Select Member…</option>
                   {members.map((m) => (
                     <option key={m.id} value={m.id}>{m.full_name} ({m.member_code || m.phone})</option>
@@ -1931,7 +2118,7 @@ export function PaymentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Payment Date</label>
-                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={inputClassName} />
+                  <input type="date" value={paymentDate} onChange={(e) => handlePaymentDateChange(e.target.value)} className={inputClassName} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Payment Method</label>
