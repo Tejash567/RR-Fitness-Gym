@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Bell,
   Calendar,
+  Check,
   CheckCircle2,
   Clock,
   Copy,
@@ -22,6 +23,7 @@ import {
   Globe,
   Image as ImageIcon,
   Instagram,
+  Key,
   Megaphone,
   MessageSquare,
   Phone,
@@ -455,6 +457,50 @@ export function AdminDashboardPage() {
   );
 }
 
+function generateRandomPassword(length = 10): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  let pass = '';
+  for (let i = 0; i < length; i++) {
+    pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pass;
+}
+
+function getPortalButtonConfig(member: Row) {
+  const hasUserId = Boolean(member.user_id);
+  const isPortalEnabled = Boolean(member.portal_enabled);
+
+  if (hasUserId && isPortalEnabled) {
+    return {
+      label: 'Reset Portal Password',
+      action: 'reset_password' as const,
+      variant: 'reset' as const,
+    };
+  }
+
+  if (isPortalEnabled && !hasUserId) {
+    return {
+      label: 'Repair / Create Portal Credentials',
+      action: 'create' as const,
+      variant: 'repair' as const,
+    };
+  }
+
+  if (hasUserId && !isPortalEnabled) {
+    return {
+      label: 'Repair / Create Portal Credentials',
+      action: 'create' as const,
+      variant: 'repair' as const,
+    };
+  }
+
+  return {
+    label: 'Create Portal Credentials',
+    action: 'create' as const,
+    variant: 'create' as const,
+  };
+}
+
 // ----------------------------------------------------
 // 2. MEMBERS PAGE & COMPLETE PROFILE MODAL
 // ----------------------------------------------------
@@ -473,6 +519,66 @@ export function MembersPage() {
   const [showAdjustDaysModal, setShowAdjustDaysModal] = useState(false);
   const [showExtraChargeModal, setShowExtraChargeModal] = useState(false);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
+
+  // Portal Account Credential state
+  const [portalLoadingMemberId, setPortalLoadingMemberId] = useState<string | null>(null);
+  const [portalModalData, setPortalModalData] = useState<{
+    member: Row;
+    memberCode: string;
+    password: string;
+    action: 'create' | 'reset_password';
+  } | null>(null);
+  const [copiedPortalCreds, setCopiedPortalCreds] = useState(false);
+
+  const handlePortalAccountAction = async (member: Row) => {
+    const config = getPortalButtonConfig(member);
+    const generatedPassword = generateRandomPassword(10);
+    setPortalLoadingMemberId(member.id);
+
+    try {
+      const res = await fetch('/api/admin/portal-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: config.action,
+          memberId: member.id, // REAL database members.id UUID
+          password: generatedPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        const errMsg = data.error || `Server error (${res.status}) while processing portal account.`;
+        alert(`Portal Credential Error (${res.status}): ${errMsg}`);
+        return;
+      }
+
+      const assignedCode = data.memberCode || member.member_code || member.member_id || member.id;
+      const finalPassword = data.password || generatedPassword;
+
+      if (selectedMember && selectedMember.id === member.id) {
+        setSelectedMember({
+          ...selectedMember,
+          user_id: data.userId || selectedMember.user_id,
+          portal_enabled: true,
+        });
+      }
+
+      await loadData();
+
+      setPortalModalData({
+        member,
+        memberCode: assignedCode,
+        password: finalPassword,
+        action: config.action,
+      });
+      setCopiedPortalCreds(false);
+    } catch (err: any) {
+      alert(`Portal Credential Error: ${err.message || 'Network error processing request.'}`);
+    } finally {
+      setPortalLoadingMemberId(null);
+    }
+  };
 
   // Deep detail state for member profile
   const [memberPayments, setMemberPayments] = useState<Row[]>([]);
@@ -1126,12 +1232,35 @@ export function MembersPage() {
                           </span>
                         </td>
                         <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => openMemberProfile(m)}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
-                          >
-                            View Profile
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            {(() => {
+                              const portalBtn = getPortalButtonConfig(m);
+                              const isProc = portalLoadingMemberId === m.id;
+                              return (
+                                <button
+                                  onClick={() => handlePortalAccountAction(m)}
+                                  disabled={isProc}
+                                  className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1.5 shrink-0 ${
+                                    portalBtn.variant === 'reset'
+                                      ? 'bg-slate-800 hover:bg-slate-900 text-white'
+                                      : portalBtn.variant === 'repair'
+                                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                  }`}
+                                  title={portalBtn.label}
+                                >
+                                  <Key size={13} />
+                                  <span>{isProc ? 'Processing...' : portalBtn.label}</span>
+                                </button>
+                              );
+                            })()}
+                            <button
+                              onClick={() => openMemberProfile(m)}
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors shrink-0"
+                            >
+                              View Profile
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1168,12 +1297,34 @@ export function MembersPage() {
                       <div><span className="font-semibold text-slate-400">Plan:</span> {planName}</div>
                       <div><span className="font-semibold text-slate-400">Expiry:</span> {statusRes.effectiveExpiryStr}</div>
                     </div>
-                    <button
-                      onClick={() => openMemberProfile(m)}
-                      className="w-full py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors shadow-sm"
-                    >
-                      View Profile & Actions
-                    </button>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {(() => {
+                        const portalBtn = getPortalButtonConfig(m);
+                        const isProc = portalLoadingMemberId === m.id;
+                        return (
+                          <button
+                            onClick={() => handlePortalAccountAction(m)}
+                            disabled={isProc}
+                            className={`py-2 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm ${
+                              portalBtn.variant === 'reset'
+                                ? 'bg-slate-800 hover:bg-slate-900 text-white'
+                                : portalBtn.variant === 'repair'
+                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }`}
+                          >
+                            <Key size={14} className="shrink-0" />
+                            <span className="truncate">{isProc ? 'Processing...' : portalBtn.label}</span>
+                          </button>
+                        );
+                      })()}
+                      <button
+                        onClick={() => openMemberProfile(m)}
+                        className="py-2 px-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors shadow-sm truncate"
+                      >
+                        View Profile & Actions
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -1225,6 +1376,26 @@ export function MembersPage() {
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
               {/* Quick Action Toolbar */}
               <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                {(() => {
+                  const portalBtnSelected = getPortalButtonConfig(selectedMember);
+                  const isProcSel = portalLoadingMemberId === selectedMember.id;
+                  return (
+                    <button
+                      onClick={() => handlePortalAccountAction(selectedMember)}
+                      disabled={isProcSel}
+                      className={`px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-sm ${
+                        portalBtnSelected.variant === 'reset'
+                          ? 'bg-slate-800 hover:bg-slate-900 text-white'
+                          : portalBtnSelected.variant === 'repair'
+                          ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                    >
+                      <Key size={14} />
+                      <span>{isProcSel ? 'Processing...' : portalBtnSelected.label}</span>
+                    </button>
+                  );
+                })()}
                 <a
                   href={formatWhatsAppReminderUrl(selectedMember, selectedMember.membership_plans?.name, calculateMembershipStatus(selectedMember, memberAdjustments).effectiveExpiryStr)}
                   target="_blank"
@@ -1819,6 +1990,80 @@ export function MembersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PORTAL CREDENTIAL RESULT MODAL */}
+      {portalModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Key size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white m-0">
+                    {portalModalData.action === 'reset_password' ? 'Portal Password Reset' : 'Portal Credentials Created'}
+                  </h3>
+                  <p className="text-xs text-slate-400 m-0">Provide these login details to {portalModalData.member.full_name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPortalModalData(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="p-3 bg-slate-800/80 border border-slate-700/80 rounded-xl space-y-1">
+                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Member ID</span>
+                <span className="font-mono text-base font-black text-white">{portalModalData.memberCode}</span>
+              </div>
+
+              <div className="p-3 bg-slate-800/80 border border-slate-700/80 rounded-xl space-y-1">
+                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Password</span>
+                <span className="font-mono text-base font-black text-emerald-400 tracking-wider">{portalModalData.password}</span>
+              </div>
+
+              <div className="p-3 bg-slate-800/80 border border-slate-700/80 rounded-xl space-y-1">
+                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Portal URL</span>
+                <a
+                  href={typeof window !== 'undefined' ? `${window.location.origin}/member/login` : '/member/login'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-xs text-red-400 hover:underline break-all block"
+                >
+                  {typeof window !== 'undefined' ? `${window.location.origin}/member/login` : '/member/login'}
+                </a>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <button
+                onClick={() => {
+                  const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/member/login` : '/member/login';
+                  const textToCopy = `Member Portal Credentials\n-------------------------\nMember ID: ${portalModalData.memberCode}\nPassword: ${portalModalData.password}\nPortal: ${portalUrl}`;
+                  navigator.clipboard.writeText(textToCopy);
+                  setCopiedPortalCreds(true);
+                  setTimeout(() => setCopiedPortalCreds(false), 2500);
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
+              >
+                {copiedPortalCreds ? <Check size={16} /> : <Copy size={16} />}
+                <span>{copiedPortalCreds ? 'Copied to Clipboard!' : 'Copy Credentials'}</span>
+              </button>
+
+              <button
+                onClick={() => setPortalModalData(null)}
+                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
       }
 
-      const targetEmail = member.email || getSyntheticEmail(member.member_code || member.member_id, member.id);
+      const targetEmail = getSyntheticEmail(member.member_code || member.member_id, member.id);
       let userId: string | null = null;
 
       // Case A: members.user_id already exists
@@ -117,14 +117,21 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Could not obtain valid Auth user ID from Supabase Auth.' }, { status: 400 });
       }
 
-      // ONLY AFTER Auth user exists in auth.users, update members.user_id
+      // ONLY AFTER Auth user exists in auth.users, update members.user_id & portal_enabled
+      const updateData: Record<string, any> = {
+        user_id: userId,
+        portal_enabled: true,
+      };
+      if (!member.email) {
+        updateData.email = targetEmail;
+      }
+      if (member.status === 'inactive' || !member.status) {
+        updateData.status = 'active';
+      }
+
       const { error: linkErr } = await adminClient
         .from('members')
-        .update({
-          user_id: userId,
-          email: targetEmail,
-          status: 'active',
-        })
+        .update(updateData)
         .eq('id', member.id);
 
       if (linkErr) {
